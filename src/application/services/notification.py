@@ -17,12 +17,18 @@ from loguru import logger
 
 from src.application.common import Notifier, TranslatorHub
 from src.application.common.dao import SettingsDao, UserDao
-from src.application.dto import MessagePayloadDto, SettingsDto, TempUserDto, UserDto
+from src.application.dto import (
+    MessagePayloadDto,
+    NotificationTaskDto,
+    SettingsDto,
+    TempUserDto,
+    UserDto,
+)
 from src.application.events import ErrorEvent, SystemEvent
 from src.core.config import AppConfig
 from src.core.enums import Locale, Role
 from src.core.types import AnyKeyboard
-from src.infrastructure.common.safe_task import create_safe_task
+from src.infrastructure.services import NotificationQueue
 from src.infrastructure.services.event_bus import on_event
 from src.telegram.states import Notification
 
@@ -35,12 +41,15 @@ class NotificationService(Notifier):
         translator_hub: TranslatorHub,
         user_dao: UserDao,
         settings_dao: SettingsDao,
+        queue: NotificationQueue,
     ) -> None:
         self.bot = bot
         self.config = config
         self.translator_hub = translator_hub
         self.user_dao = user_dao
         self.settings_dao = settings_dao
+        self.queue = queue
+        self.queue.start(self._process_task)
 
     async def notify_user(
         self,
@@ -63,15 +72,7 @@ class NotificationService(Notifier):
         payload: MessagePayloadDto,
         roles: list[Role] = [Role.OWNER, Role.DEV, Role.ADMIN],
     ) -> None:
-        users = await self.user_dao.filter_by_role(roles)
-
-        if not users:
-            logger.warning(
-                f"No users with roles '{roles}' found for notification, using 'owner_id'"
-            )
-            temp_owner = [TempUserDto.as_temp_owner(telegram_id=self.config.bot.owner_id)]
-
-        create_safe_task(self._broadcast(users or temp_owner, payload))
+        await self.queue.enqueue(NotificationTaskDto(payload=payload, roles=roles))
 
     @on_event(SystemEvent)
     async def on_system_event(self, event: SystemEvent) -> None:
@@ -117,17 +118,13 @@ class NotificationService(Notifier):
             logger.error(f"Failed to delete notification '{message_id}': {e}")
             await self._clear_reply_markup(chat_id, message_id)
 
-    async def _clear_reply_markup(self, chat_id: int, message_id: int) -> None:
-        try:
-            logger.debug(f"Attempting to remove keyboard from notification '{message_id}'")
-            await self.bot.edit_message_reply_markup(
-                chat_id=chat_id,
-                message_id=message_id,
-                reply_markup=None,
-            )
-            logger.debug(f"Keyboard removed from notification '{message_id}'")
-        except Exception as e:
-            logger.error(f"Failed to remove keyboard from '{message_id}': {e}")
+    async def _process_task(self, task: NotificationTaskDto) -> None:
+        users = await self.user_dao.filter_by_role(task.roles)
+
+        if not users:
+            temp_owner = [TempUserDto.as_temp_owner(telegram_id=self.config.bot.owner_id)]
+
+        await self._broadcast(users or temp_owner, task.payload)
 
     async def _broadcast(
         self,
@@ -299,3 +296,15 @@ class NotificationService(Notifier):
         logger.debug(f"Schedule msg '{message_id}' deletion in chat '{chat_id}' after '{delay}'s")
         await asyncio.sleep(delay)
         await self.delete_notification(chat_id, message_id)
+
+    async def _clear_reply_markup(self, chat_id: int, message_id: int) -> None:
+        try:
+            logger.debug(f"Attempting to remove keyboard from notification '{message_id}'")
+            await self.bot.edit_message_reply_markup(
+                chat_id=chat_id,
+                message_id=message_id,
+                reply_markup=None,
+            )
+            logger.debug(f"Keyboard removed from notification '{message_id}'")
+        except Exception as e:
+            logger.error(f"Failed to remove keyboard from '{message_id}': {e}")

@@ -1,4 +1,4 @@
-from . import access, dialog
+from . import access, dialog, remnawave
 
 __all__ = [
     "dialog",

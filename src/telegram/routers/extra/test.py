@@ -19,7 +19,6 @@ from src.infrastructure.taskiq.tasks.update import check_bot_update
 router = Router(name=__name__)
 
 
-# TODO: ONLY ADMIN
 @inject
 @router.message(Command("test"))
 async def on_test_command(

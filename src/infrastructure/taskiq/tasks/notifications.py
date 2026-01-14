@@ -1,6 +1,5 @@
 import asyncio
 import time
-from typing import Iterable, Iterator, List, TypeVar
 
 from dishka.integrations.taskiq import FromDishka, inject
 from loguru import logger
@@ -9,21 +8,9 @@ from src.application.common import Notifier
 from src.application.common.dao import UserDao
 from src.application.common.uow import UnitOfWork
 from src.application.dto import MessagePayloadDto
-from src.core.constants import BATCH_DELAY, BATCH_SIZE
+from src.core.constants import BATCH_DELAY, BATCH_SIZE_20
+from src.core.utils.iterables import chunked
 from src.infrastructure.taskiq.broker import broker
-
-T = TypeVar("T")
-
-
-def chunked(iterable: Iterable[T], size: int) -> Iterator[List[T]]:
-    chunk: List[T] = []
-    for item in iterable:
-        chunk.append(item)
-        if len(chunk) == size:
-            yield chunk
-            chunk = []
-    if chunk:
-        yield chunk
 
 
 @broker.task
@@ -46,7 +33,7 @@ async def notify_payments_restored(
 
     logger.info(f"Starting access broadcast for '{total_users}' users")
 
-    for i, batch in enumerate(chunked(users, BATCH_SIZE), start=1):
+    for i, batch in enumerate(chunked(users, BATCH_SIZE_20), start=1):
         batch_start = time.perf_counter()
 
         tasks = [

@@ -6,7 +6,7 @@ from dishka import AsyncContainer
 from loguru import logger
 
 from src.application.common import Notifier
-from src.application.dto import MessagePayloadDto, UserDto
+from src.application.dto import UserDto
 from src.core.constants import CONTAINER_KEY, USER_KEY
 from src.core.enums import MiddlewareEventType
 

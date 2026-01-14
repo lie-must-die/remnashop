@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Any, Awaitable, Callable, ClassVar, Final, Optional
 
 from aiogram import BaseMiddleware, Router
-from aiogram.types import TelegramObject
+from aiogram.types import CallbackQuery, Message, TelegramObject
 from aiogram.types import User as AiogramUser
 from loguru import logger
 
@@ -79,11 +79,22 @@ class EventTypedMiddleware(BaseMiddleware, ABC):
         data: dict[str, Any],
     ) -> Any: ...
 
-    @staticmethod
-    def _get_aiogram_user(data: dict[str, Any]) -> Optional[AiogramUser]:
+    def _get_aiogram_user(self, data: dict[str, Any]) -> Optional[AiogramUser]:
         user = data.get("event_from_user")
 
         if isinstance(user, dict):
             return AiogramUser(**user)
 
         return user if isinstance(user, AiogramUser) else None
+
+    async def _delete_previous_message(self, event: TelegramObject) -> None:
+        if not isinstance(event, CallbackQuery):
+            return
+
+        if not isinstance(event.message, Message) or event.message is None:
+            return
+
+        try:
+            await event.message.delete()
+        except Exception as e:
+            logger.debug(f"Failed to delete previous message for '{event.from_user.id}': '{e}'")

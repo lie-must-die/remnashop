@@ -4,7 +4,7 @@ from aiogram import Bot
 from loguru import logger
 
 from src.application.common.dao import ReferralDao, UserDao
-from src.application.dto.user import UserDto
+from src.application.dto import UserDto
 from src.core.config import AppConfig
 from src.core.constants import REFERRAL_PREFIX, T_ME
 

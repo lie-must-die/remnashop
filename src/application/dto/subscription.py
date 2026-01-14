@@ -23,7 +23,7 @@ class RemnaSubscriptionDto:
 
     traffic_limit: int
     device_limit: int
-    traffic_limit_strategy: Optional[TrafficLimitStrategy] = None
+    traffic_limit_strategy: TrafficLimitStrategy
 
     tag: Optional[str] = None
     internal_squads: list[UUID] = field(default_factory=list)

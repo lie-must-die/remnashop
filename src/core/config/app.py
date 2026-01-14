@@ -5,8 +5,8 @@ from typing import Self
 from pydantic import Field, SecretStr, field_validator
 from pydantic_core.core_schema import FieldValidationInfo
 
-from src.core.constants import ASSETS_DIR, DOMAIN_REGEX
-from src.core.enums import Locale, LogLevel
+from src.core.constants import API_V1, ASSETS_DIR, DOMAIN_REGEX, PAYMENTS_WEBHOOK_PATH
+from src.core.enums import Locale, LogLevel, PaymentGatewayType
 from src.core.types import LocaleList, StringList
 
 from .base import BaseConfig
@@ -15,6 +15,7 @@ from .build import BuildConfig
 from .database import DatabaseConfig
 from .log import LogConfig
 from .redis import RedisConfig
+from .remnawave import RemnawaveConfig
 from .validators import validate_not_change_me
 
 
@@ -32,6 +33,7 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     origins: StringList = StringList("")
 
     bot: BotConfig = Field(default_factory=BotConfig)
+    remnawave: RemnawaveConfig = Field(default_factory=RemnawaveConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
     build: BuildConfig = Field(default_factory=BuildConfig)
@@ -45,10 +47,10 @@ class AppConfig(BaseConfig, env_prefix="APP_"):
     def translations_dir(self) -> Path:
         return self.assets_dir / "translations"
 
-    # def get_webhook(self, gateway_type: PaymentGatewayType) -> str:
-    #     domain = f"https://{self.domain.get_secret_value()}"
-    #     path = f"{API_V1 + PAYMENTS_WEBHOOK_PATH}/{gateway_type.lower()}"
-    #     return domain + path
+    def get_webhook(self, gateway_type: PaymentGatewayType) -> str:
+        domain = f"https://{self.domain.get_secret_value()}"
+        path = f"{API_V1 + PAYMENTS_WEBHOOK_PATH}/{gateway_type.lower()}"
+        return domain + path
 
     @classmethod
     def get(cls) -> Self:

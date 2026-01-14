@@ -3,6 +3,7 @@ from typing import Optional, Self
 
 from aiogram.types import User as AiogramUser
 
+from src.core.constants import REMNASHOP_PREFIX
 from src.core.enums import Locale, Role
 from src.core.utils.time import datetime_now
 
@@ -65,3 +66,16 @@ class UserDto(BaseDto, TrackableMixin, TimestampMixin):
     @property
     def log(self) -> str:
         return f"[{self.role}:{self.telegram_id} ({self.name})]"
+
+    @property
+    def remna_name(self) -> str:  # NOTE: DONT USE FOR GET USER!
+        return f"{REMNASHOP_PREFIX}{self.telegram_id}"
+
+    @property
+    def remna_description(self) -> str:
+        description = f"name: {self.name}"
+
+        if self.username:
+            description += f"\nusername: {self.username}"
+
+        return description

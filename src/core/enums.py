@@ -179,8 +179,10 @@ class SystemNotificationType(UpperStrEnum):
     TRIAL_ACTIVATED = auto()
     #
     NODE_STATUS_CHANGED = auto()
+    NODE_TRAFFIC_REACHED = auto()
+    #
     USER_FIRST_CONNECTION = auto()
-    USER_HWID_UPDATED = auto()
+    USER_DEVICES_UPDATED = auto()
 
 
 class UserNotificationType(UpperStrEnum):

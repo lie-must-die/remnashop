@@ -34,7 +34,7 @@ class AccessMiddleware(EventTypedMiddleware):
         check_access = await container.get(CheckAccess)
         referral_service = await container.get(ReferralService)
 
-        if not await check_access.system(
+        if await check_access.system(
             CheckAccessDto(
                 temp_user=TempUserDto.from_aiogram(aiogram_user),
                 is_payment_event=self._is_payment_event(event),
@@ -45,9 +45,7 @@ class AccessMiddleware(EventTypedMiddleware):
                 ),
             )
         ):
-            return
-
-        return await handler(event, data)
+            return await handler(event, data)
 
     def _is_payment_event(self, event: TelegramObject) -> bool:
         if not isinstance(event, CallbackQuery) or not event.data:

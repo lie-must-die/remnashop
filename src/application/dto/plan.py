@@ -12,6 +12,7 @@ from .base import BaseDto, TimestampMixin, TrackableMixin
 
 @dataclass(kw_only=True)
 class PlanSnapshotDto:
+    id: int
     name: str
     tag: Optional[str] = None
 

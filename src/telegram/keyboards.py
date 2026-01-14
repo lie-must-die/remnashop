@@ -55,15 +55,15 @@ back_main_menu_button = (
 def get_goto_buttons(is_referral_enable: bool, url: str) -> list[InlineKeyboardButton]:
     buttons = [
         InlineKeyboardButton(
-            text="btn-contact-support",
+            text="btn-goto.contact-support",
             url=url,
         ),
         InlineKeyboardButton(
-            text="btn-goto-subscription",
+            text="btn-goto.subscription",
             callback_data=f"{GOTO_PREFIX}{Subscription.MAIN.state}",
         ),
         InlineKeyboardButton(
-            text="btn-goto-promocode",
+            text="btn-goto.promocode",
             callback_data=f"{GOTO_PREFIX}{Subscription.PROMOCODE.state}",
         ),
     ]
@@ -71,7 +71,7 @@ def get_goto_buttons(is_referral_enable: bool, url: str) -> list[InlineKeyboardB
     if is_referral_enable:
         buttons.append(
             InlineKeyboardButton(
-                text="btn-goto-invite",
+                text="btn-goto.invite",
                 callback_data=f"{GOTO_PREFIX}{MainMenu.INVITE.state}",
             )
         )
@@ -83,7 +83,7 @@ def get_renew_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="btn-goto-subscription-renew",
+            text="btn-goto.subscription-renew",
             callback_data=f"{GOTO_PREFIX}{PAYMENT_PREFIX}{PurchaseType.RENEW}",
         ),
     )
@@ -94,7 +94,7 @@ def get_buy_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="btn-goto-subscription",
+            text="btn-goto.subscription",
             callback_data=f"{GOTO_PREFIX}{PAYMENT_PREFIX}{PurchaseType.NEW}",
         ),
     )
@@ -105,13 +105,13 @@ def get_channel_keyboard(channel_link: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="btn-channel-join",
+            text="btn-requirement.channel-join",
             url=channel_link,
         ),
     )
     builder.row(
         InlineKeyboardButton(
-            text="btn-channel-confirm",
+            text="btn-requirement.channel-confirm",
             callback_data=CALLBACK_CHANNEL_CONFIRM,
         ),
     )
@@ -122,7 +122,7 @@ def get_rules_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="btn-rules-accept",
+            text="btn-requirement.rules-accept",
             callback_data=CALLBACK_RULES_ACCEPT,
         ),
     )
@@ -133,7 +133,7 @@ def get_contact_support_keyboard(username: str, text: str) -> InlineKeyboardMark
     builder = InlineKeyboardBuilder()
     builder.row(
         InlineKeyboardButton(
-            text="btn-contact-support",
+            text="btn-goto.contact-support",
             url=username_to_url(username, text),
         ),
     )
@@ -186,7 +186,7 @@ def get_user_keyboard(telegram_id: int) -> InlineKeyboardMarkup:
 
     builder.row(
         InlineKeyboardButton(
-            text="btn-goto-user-profile",
+            text="btn-goto.user-profile",
             callback_data=f"{GOTO_PREFIX}{DashboardUser.MAIN.state}:{telegram_id}",
         ),
     )

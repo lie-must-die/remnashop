@@ -1,4 +1,5 @@
 event-error =
+    .general =
     #ErrorEvent
 
     <b>🔅 Событие: Произошла ошибка!</b>
@@ -17,7 +18,7 @@ event-error =
     { $error }
     </blockquote>
 
-event-error-remnawave =
+    .remnawave =
     #ErrorEvent
 
     <b>🔅 Событие: Ошибка при подключении к Remnawave!</b>
@@ -33,7 +34,7 @@ event-error-remnawave =
     { $error }
     </blockquote>
 
-event-error-webhook =
+    .webhook =
     #ErrorEvent
 
     <b>🔅 Событие: Зафиксирована ошибка вебхука!</b>
@@ -43,7 +44,9 @@ event-error-webhook =
     { $error }
     </blockquote>
 
-event-bot-startup =
+
+event-bot =
+    .startup =
     #BotStartupEvent
 
     <b>🔅 Событие: Бот запущен!</b>
@@ -63,7 +66,7 @@ event-bot-startup =
     }
     </blockquote>
 
-event-bot-shutdown =
+    .shutdown =
     #BotShutdownEvent
 
     <b>🔅 Событие: Бот остановлен!</b>
@@ -74,7 +77,7 @@ event-bot-shutdown =
     • <b>Аптайм</b>: { $uptime }
     </blockquote>
 
-event-bot-update =
+    .update =
     #BotUpdateEvent
 
     <b>🔅 Событие: Обнаружено обновление Remnashop!</b>
@@ -85,7 +88,9 @@ event-bot-update =
     • <b>Последняя</b>: { $remote_version }
     </blockquote>
 
-event-user-registered =
+
+event-user =
+    .registered =
     #UserRegisteredEvent
 
     <b>🔅 Событие: Новый пользователь!</b>
@@ -105,9 +110,44 @@ event-user-registered =
     }
     </blockquote>
     }
+
+    .first-connected =
+    #UserFirstConnectionEvent
+
+    <b>🔅 Событие: Первое подключение пользователя!</b>
+
+    { hdr-user }
+    { frg-user-info }
+
+    { hdr-subscription }
+    { frg-subscription-details }
+
+    .device-added =
+    #UserDeviceAddedEvent
+
+    <b>🔅 Событие: Пользователь добавил новое устройство!</b>
+
+    { hdr-user }
+    { frg-user-info }
+
+    { hdr-hwid }
+    { frg-user-hwid }
+
+    .device-deleted =
+    #UserDeviceDeletedEvent
+
+    <b>🔅 Событие: Пользователь удалил устройство!</b>
+
+    { hdr-user }
+    { frg-user-info }
+
+    { hdr-hwid }
+    { frg-user-hwid }
     
-event-subscription-trial =
-    #TrialGettedEvent
+
+event-subscription =
+    .trial =
+    #SubscriptionTrialEvent
 
     <b>🔅 Событие: Получение пробной подписки!</b>
 
@@ -116,8 +156,8 @@ event-subscription-trial =
     
     { hdr-plan }
     { frg-plan-snapshot }
-
-event-subscription-new =
+    
+    .new =
     #SubscriptionNewEvent
 
     <b>🔅 Событие: Покупка подписки!</b>
@@ -131,7 +171,7 @@ event-subscription-new =
     { hdr-plan }
     { frg-plan-snapshot }
 
-event-subscription-renew =
+    .renew =
     #SubscriptionRenewEvent
 
     <b>🔅 Событие: Продление подписки!</b>
@@ -145,7 +185,7 @@ event-subscription-renew =
     { hdr-plan }
     { frg-plan-snapshot }
 
-event-subscription-change =
+    .change =
     #SubscriptionChangeEvent
 
     <b>🔅 Событие: Изменение подписки!</b>
@@ -159,64 +199,7 @@ event-subscription-change =
     { hdr-plan }
     { frg-plan-snapshot-comparison }
 
-event-node-connection-lost =
-    #NodeEvent
-
-    <b>🔅 Событие: Соединение с узлом потеряно!</b>
-
-    { hdr-node }
-    { frg-node-info }
-
-event-node-connection-restored =
-    #NodeEvent
-
-    <b>🔅 Событие: Cоединение с узлом восстановлено!</b>
-
-    { hdr-node }
-    { frg-node-info }
-
-event-node-traffic =
-    #NodeEvent
-
-    <b>🔅 Событие: Узел достиг порога лимита трафика!</b>
-
-    { hdr-node }
-    { frg-node-info }
-
-event-user-first-connected =
-    #UserEvent
-
-    <b>🔅 Событие: Первое подключение пользователя!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-subscription }
-    { frg-subscription-details }
-
-event-user-hwid-added =
-    #UserHwidEvent
-
-    <b>🔅 Событие: Пользователь добавил новое устройство!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-hwid }
-    { frg-user-hwid }
-
-event-user-hwid-deleted =
-    #UserHwidEvent
-
-    <b>🔅 Событие: Пользователь удалил устройство!</b>
-
-    { hdr-user }
-    { frg-user-info }
-
-    { hdr-hwid }
-    { frg-user-hwid }
-
-event-user-expiring =
+    .expiring =
     { $is_trial ->
     [0]
     <b>⚠️ Внимание! Ваша подписка закончится через { unit-day }.</b>
@@ -228,15 +211,15 @@ event-user-expiring =
     Оформите подписку, чтобы не терять доступ к сервису! 
     }
 
-event-user-expired =
+    .expired =
     <b>⛔ Внимание! Доступ приостановлен — VPN не работает.</b>
 
     { $is_trial ->
     [0] Ваша подписка истекла, продлите ее, чтобы продолжить пользоваться VPN!
     *[1] Ваш бесплатный пробный период закончился. Оформите подписку, чтобы продолжить пользоваться сервисом!
     }
-    
-event-user-expired-ago =
+
+    .expired-ago =
     <b>⛔ Внимание! Доступ приостановлен — VPN не работает.</b>
 
     { $is_trial ->
@@ -244,7 +227,7 @@ event-user-expired-ago =
     *[1] Ваш бесплатный пробный период закончился { unit-day } назад. Оформите подписку, чтобы продолжить пользоваться сервисом!
     }
 
-event-user-limited =
+    .limited =
     <b>⛔ Внимание! Доступ приостановлен — VPN не работает.</b>
 
     Ваш трафик израсходован. { $is_trial ->
@@ -258,14 +241,42 @@ event-user-limited =
         }
     }
 
-event-user-referral-attached =
+
+event-node =
+    .connection-lost =
+    #NodeConnectionLostEvent
+    
+    <b>🔅 Событие: Соединение с узлом потеряно!</b>
+
+    { hdr-node }
+    { frg-node-info }
+
+    .connection-restored =
+    #NodeConnectionRestoredEvent
+
+    <b>🔅 Событие: Cоединение с узлом восстановлено!</b>
+
+    { hdr-node }
+    { frg-node-info }
+
+    .traffic-reached =
+    #NodeTrafficReachedEvent
+
+    <b>🔅 Событие: Узел достиг порога лимита трафика!</b>
+
+    { hdr-node }
+    { frg-node-info }
+
+
+event-referral =
+    .attached =
     <b>🎉 Вы пригласили друга!</b>
     
     <blockquote>
     Пользователь <b>{ $name }</b> присоединился по вашей пригласительной ссылке! Чтобы получить награду, убедитесь, что он совершит покупку подписки.
     </blockquote>
 
-event-user-referral-reward =
+    .reward =
     <b>💰 Вам начислена награда!</b>
     
     <blockquote>
@@ -284,7 +295,7 @@ event-user-referral-reward =
     }</b> к вашей подписке!
     </blockquote>
 
-event-user-referral-reward-error =
+    .reward-failed =
     <b>❌ Не получилось выдать награду!</b>
     
     <blockquote>

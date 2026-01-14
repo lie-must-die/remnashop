@@ -34,6 +34,9 @@ class Permission(UpperStrEnum):
     TOGGLE_CONDITION_REQUIREMENT = auto()
     UPDATE_RULES_REQUIREMENT = auto()
     UPDATE_CHANNEL_REQUIREMENT = auto()
+    #
+    USER_SYNC = auto()
+    MANAGE_SUBSCRIPTIONS = auto()
 
 
 ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
@@ -44,7 +47,7 @@ ROLE_PERMISSIONS: Final[dict[Role, set[Permission]]] = {
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_ACCESS,
     },
-    Role.PREVIEW: {
+    Role.PREVIEW: {  # TODO: Implement demo Bot instance
         Permission.VIEW_DASHBOARD,
         Permission.VIEW_ACCESS,
     },

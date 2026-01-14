@@ -103,7 +103,7 @@ class TogglePayments(Interactor[None, None]):
 
             if waiting_users:
                 logger.info(f"Triggering notification task for '{len(waiting_users)}' users")
-                await notify_payments_restored.kiq(waiting_users)
+                await notify_payments_restored.kiq(waiting_users)  # type: ignore[call-overload]
 
                 await self.waitlist_dao.clear()
                 logger.info("Waitlist has been cleared after triggering notifications")

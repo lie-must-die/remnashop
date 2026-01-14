@@ -11,6 +11,7 @@ class UtilKey(StrEnum):
     UNLIMITED = "unlimited"
     UNKNOWN = "unknown"
     UNIT_UNLIMITED = "unit-unlimited"
+    UNIT_DEVICE = "unit-device"
 
 
 class ByteUnitKey(StrEnum):

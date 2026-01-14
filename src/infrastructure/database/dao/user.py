@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 if TYPE_CHECKING:
     from src.infrastructure.database.models import Subscription, Transaction
 
-from typing import Optional, Union
+from typing import Optional
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
@@ -116,13 +116,6 @@ class UserDaoImpl(UserDao):
         )
         return self._convert_to_dto_list(db_users)
 
-    async def exists(self, telegram_id: int) -> bool:
-        stmt = select(select(User).where(User.telegram_id == telegram_id).exists())
-        is_exists = await self.session.scalar(stmt) or False
-
-        logger.debug(f"User '{telegram_id}' existence status is '{is_exists}'")
-        return is_exists
-
     @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
     @invalidate_cache(key_builder=UserCacheKey)
     async def update(self, user: UserDto) -> Optional[UserDto]:
@@ -144,7 +137,7 @@ class UserDaoImpl(UserDao):
             )
             return self._convert_to_dto(db_user)
 
-        logger.warning(f"Failed to update user '{user.telegram_id}': user not found")
+        logger.warning(f"Failed to update user '{user.telegram_id}'")
         return None
 
     @invalidate_cache(key_builder=[USER_COUNT_PREFIX, USER_LIST_PREFIX])
@@ -161,6 +154,13 @@ class UserDaoImpl(UserDao):
         logger.debug(f"User '{telegram_id}' not found for deletion")
         return False
 
+    async def exists(self, telegram_id: int) -> bool:
+        stmt = select(select(User).where(User.telegram_id == telegram_id).exists())
+        is_exists = await self.session.scalar(stmt) or False
+
+        logger.debug(f"User '{telegram_id}' existence status is '{is_exists}'")
+        return is_exists
+
     @provide_cache(prefix=USER_COUNT_PREFIX, ttl=TTL_6H)
     async def count(self) -> int:
         stmt = select(func.count()).select_from(User)
@@ -170,7 +170,7 @@ class UserDaoImpl(UserDao):
         return total
 
     @provide_cache(ttl=TTL_1H, key_builder=RoleKey)
-    async def filter_by_role(self, role: Union[Role, list[Role]]) -> list[UserDto]:
+    async def filter_by_role(self, role: Sequence[Role]) -> list[UserDto]:
         stmt = select(User)
 
         if isinstance(role, list):
@@ -192,3 +192,10 @@ class UserDaoImpl(UserDao):
         )
         await self.session.execute(stmt)
         logger.debug(f"Bot blocked status for user '{telegram_id}' set to '{is_bot_blocked}'")
+
+    async def clear_current_subscription(self, telegram_id: int) -> None:
+        stmt = (
+            update(User).where(User.telegram_id == telegram_id).values(current_subscription_id=None)
+        )
+        await self.session.execute(stmt)
+        logger.debug(f"Current subscription cleared for user '{telegram_id}'")

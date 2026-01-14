@@ -1,11 +1,24 @@
 from dataclasses import dataclass
+from typing import Final, Optional, Union
 
+from aiogram import Bot
+from aiogram.enums import ChatMemberStatus
 from loguru import logger
 
-from src.application.common import Interactor, Notifier
+from src.application.common import EventPublisher, Interactor, Notifier
 from src.application.common.dao import SettingsDao, UserDao, WaitlistDao
+from src.application.common.policy import Permission
+from src.application.common.uow import UnitOfWork
 from src.application.dto import MessagePayloadDto, SettingsDto, TempUserDto, UserDto
+from src.application.events import ErrorEvent
+from src.core.config import AppConfig
 from src.core.enums import AccessMode
+
+ALLOWED_STATUSES: Final[tuple[ChatMemberStatus, ...]] = (
+    ChatMemberStatus.CREATOR,
+    ChatMemberStatus.ADMINISTRATOR,
+    ChatMemberStatus.MEMBER,
+)
 
 
 @dataclass(frozen=True)
@@ -17,6 +30,30 @@ class CheckAccessDto:
     @property
     def telegram_id(self) -> int:
         return self.temp_user.telegram_id
+
+
+@dataclass(frozen=True)
+class RulesStatusResultDto:
+    is_required: bool
+    is_accepted: bool
+    rules_link: Optional[str] = None
+
+
+@dataclass(frozen=True)
+class CheckChannelSubscriptionDto:
+    temp_user: TempUserDto
+
+    @property
+    def telegram_id(self) -> int:
+        return self.temp_user.telegram_id
+
+
+@dataclass(frozen=True)
+class ChannelSubscriptionResultDto:
+    is_subscribed: bool
+    status: Optional[ChatMemberStatus] = None
+    channel_url: Optional[str] = None
+    error_occurred: bool = False
 
 
 class CheckAccess(Interactor[CheckAccessDto, bool]):
@@ -97,3 +134,124 @@ class CheckAccess(Interactor[CheckAccessDto, bool]):
             await self.waitlist_dao.add(telegram_id)
             logger.info(f"User '{telegram_id}' added to payment waitlist")
         return False
+
+
+class AcceptRules(Interactor[None, None]):
+    required_permission: Permission = Permission.PUBLIC
+
+    def __init__(
+        self,
+        uow: UnitOfWork,
+        user_dao: UserDao,
+    ) -> None:
+        self.uow = uow
+        self.user_dao = user_dao
+
+    async def _execute(self, actor: UserDto, data: None) -> None:
+        async with self.uow:
+            actor.is_rules_accepted = True
+            await self.user_dao.update(actor)
+            await self.uow.commit()
+
+        logger.info(f"{actor.log} Accepted rules")
+
+
+class CheckRules(Interactor[None, RulesStatusResultDto]):
+    required_permission: Permission = Permission.PUBLIC
+
+    def __init__(self, settings_dao: SettingsDao) -> None:
+        self.settings_dao = settings_dao
+
+    async def _execute(self, actor: UserDto, data: None) -> RulesStatusResultDto:
+        settings = await self.settings_dao.get()
+
+        if actor.is_privileged:
+            logger.debug(f"User '{actor.telegram_id}' skipped rules check due to privileges")
+            return RulesStatusResultDto(is_required=False, is_accepted=True)
+
+        if not settings.requirements.rules_required:
+            logger.debug(f"Rules check skipped for '{actor.telegram_id}': requirement is disabled")
+            return RulesStatusResultDto(is_required=False, is_accepted=True)
+
+        rules_link = settings.requirements.rules_link.get_secret_value()
+
+        if actor.is_rules_accepted:
+            logger.debug(f"User '{actor.telegram_id}' has already accepted rules")
+            return RulesStatusResultDto(is_required=True, is_accepted=True, rules_link=rules_link)
+
+        logger.debug(f"User '{actor.telegram_id}' must accept rules before proceeding")
+        return RulesStatusResultDto(is_required=True, is_accepted=False, rules_link=rules_link)
+
+
+class CheckChannelSubscription(Interactor[None, ChannelSubscriptionResultDto]):
+    required_permission: Permission = Permission.PUBLIC
+
+    def __init__(
+        self,
+        settings_dao: SettingsDao,
+        bot: Bot,
+        config: AppConfig,
+        event_publisher: EventPublisher,
+    ) -> None:
+        self.settings_dao = settings_dao
+        self.bot = bot
+        self.config = config
+        self.event_publisher = event_publisher
+
+    async def _execute(
+        self,
+        actor: UserDto,
+        data: None,
+    ) -> ChannelSubscriptionResultDto:
+        settings = await self.settings_dao.get()
+
+        if not settings.requirements.channel_required:
+            logger.debug("Channel check skipped: requirement is disabled in settings")
+            return ChannelSubscriptionResultDto(is_subscribed=True)
+
+        if actor.is_privileged:
+            logger.debug(f"User '{actor.telegram_id}' skipped channel check due to privileges")
+            return ChannelSubscriptionResultDto(is_subscribed=True)
+
+        req = settings.requirements
+        channel_link = req.channel_link.get_secret_value()
+        channel_url = req.channel_url
+
+        chat_id: Union[str, int, None] = None
+        if req.channel_has_username:
+            chat_id = channel_link
+        elif req.channel_id:
+            chat_id = req.channel_id
+
+        if chat_id is None:
+            logger.warning(
+                f"Channel check skipped for '{actor.telegram_id}': no valid chat_id or username"
+            )
+            return ChannelSubscriptionResultDto(is_subscribed=True)
+
+        try:
+            member = await self.bot.get_chat_member(
+                chat_id=chat_id,
+                user_id=actor.telegram_id,
+            )
+
+            is_subscribed = member.status in ALLOWED_STATUSES
+            return ChannelSubscriptionResultDto(
+                is_subscribed=is_subscribed, status=member.status, channel_url=channel_url
+            )
+
+        except Exception as e:
+            logger.error(f"Failed to check channel for '{actor.telegram_id}': '{e}'")
+
+            error_event = ErrorEvent(
+                **self.config.build.data,
+                #
+                telegram_id=actor.telegram_id,
+                username=actor.username,
+                name=actor.name,
+                #
+                exception=e,
+            )
+
+            await self.event_publisher.publish(error_event)
+            return ChannelSubscriptionResultDto(is_subscribed=True, error_occurred=True)

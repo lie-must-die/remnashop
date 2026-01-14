@@ -13,11 +13,8 @@ def i18n_format_bytes_to_unit(
     round_up: bool = False,
     min_unit: ByteUnitKey = ByteUnitKey.GIGABYTE,
 ) -> tuple[str, dict[str, float]]:
-    if value == -1:
-        return UtilKey.UNLIMITED, {}
-
     if not value:
-        value = 0
+        return UtilKey.UNLIMITED, {}
 
     bytes_value = Decimal(value)
     units: Final[list[ByteUnitKey]] = list(ByteUnitKey)  # [B, KB, MB, GB]
@@ -69,7 +66,7 @@ def i18n_format_seconds(
 
 
 def i18n_format_days(value: int) -> tuple[str, dict[str, int]]:
-    if value == -1:  # UNLIMITED
+    if value == 0:
         return UtilKey.UNLIMITED, {}
 
     if value % 365 == 0:
@@ -81,25 +78,24 @@ def i18n_format_days(value: int) -> tuple[str, dict[str, int]]:
     return TimeUnitKey.DAY, {"value": value}
 
 
-def i18n_format_limit(value: int) -> tuple[str, dict[str, int]]:
-    return UtilKey.UNIT_UNLIMITED, {"value": value}
-
-
-def i18n_format_traffic_limit(value: int) -> tuple[str, dict[str, int]]:
-    if value == -1:
-        return UtilKey.UNIT_UNLIMITED, {"value": value}
+def i18n_format_traffic_limit(value: Optional[int]) -> tuple[str, dict[str, int]]:
+    if not value:
+        return UtilKey.UNLIMITED, {}
 
     return ByteUnitKey.GIGABYTE, {"value": value}
 
 
-def i18n_format_device_limit(value: int) -> tuple[str, dict[str, int]]:
-    return UtilKey.UNIT_UNLIMITED, {"value": value}
+def i18n_format_device_limit(value: Optional[int]) -> tuple[str, dict[str, int]]:
+    if not value:
+        return UtilKey.UNLIMITED, {}
+
+    return UtilKey.UNIT_DEVICE, {"value": value}
 
 
 def i18n_format_expire_time(expiry: Union[timedelta, datetime]) -> list[tuple[str, dict[str, int]]]:
     # Special case: unlimited remnawave ;D
     if isinstance(expiry, datetime) and expiry.year == 2099:
-        return [(UtilKey.UNLIMITED, {"value": -1})]
+        return [(UtilKey.UNLIMITED, {"value": 0})]
 
     # Convert datetime to timedelta
     if isinstance(expiry, datetime):

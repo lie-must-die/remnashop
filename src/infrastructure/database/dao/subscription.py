@@ -119,6 +119,35 @@ class SubscriptionDaoImpl(SubscriptionDao):
         logger.debug(f"Active subscription not found for user '{telegram_id}'")
         return None
 
+    async def update(self, subscription: SubscriptionDto) -> Optional[SubscriptionDto]:
+        if not subscription.id:
+            logger.warning("Subscription ID is missing, skipping update")
+            return None
+
+        if not subscription.changed_data:
+            logger.debug(
+                f"No changes detected for subscription '{subscription.id}', skipping update"
+            )
+            return await self.get_by_id(subscription.id)
+
+        stmt = (
+            update(Subscription)
+            .where(Subscription.id == subscription.id)
+            .values(**subscription.changed_data)
+            .returning(Subscription)
+        )
+        db_subscription = await self.session.scalar(stmt)
+
+        if db_subscription:
+            logger.debug(
+                f"Subscription '{subscription.id}' updated successfully "
+                f"with data '{subscription.changed_data}'"
+            )
+            return self._convert_to_dto(db_subscription)
+
+        logger.warning(f"Failed to update subscription '{subscription.id}'")
+        return None
+
     async def update_status(
         self,
         subscription_id: int,

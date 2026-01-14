@@ -7,6 +7,7 @@ from dishka import AsyncContainer, Scope
 from fastapi import FastAPI
 from loguru import logger
 
+from src.application.common import Remnawave
 from src.application.common.dao import SettingsDao
 from src.application.events import (
     BotShutdownEvent,
@@ -37,6 +38,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         settings_dao = await startup_container.get(SettingsDao)
         webhook_service = await startup_container.get(WebhookService)
         command_service = await startup_container.get(CommandService)
+        remnawave_service = await startup_container.get(Remnawave)
 
         settings = await settings_dao.get()
         allowed_updates = dispatcher.resolve_used_update_types()
@@ -91,11 +93,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await event_bus.publish(bot_startup_event)
 
     try:
-        pass
-        # await remnawave_service.try_connection() #TODO: remnawave version
+        await remnawave_service.try_connection()
     except Exception as e:
-        logger.exception(f"Remnawave connection failed: {e}")
-
         remnawave_error_event = RemnawaveErrorEvent(**config.build.data, exception=e)
         await event_bus.publish(remnawave_error_event)
 

@@ -9,7 +9,7 @@ from src.application.services import ReferralService
 
 
 @dataclass(frozen=True)
-class MenuDataDto:
+class MenuDataResultDto:
     is_referral_enabled: bool
     has_used_trial: bool
     available_trial: Optional[PlanDto]
@@ -17,7 +17,7 @@ class MenuDataDto:
     referral_link: str
 
 
-class GetMenuData(Interactor[None, MenuDataDto]):
+class GetMenuData(Interactor[None, MenuDataResultDto]):
     required_permission: Permission = Permission.PUBLIC
 
     def __init__(
@@ -32,7 +32,7 @@ class GetMenuData(Interactor[None, MenuDataDto]):
         self.subscription_dao = subscription_dao
         self.referral_service = referral_service
 
-    async def _execute(self, actor: UserDto, data: None) -> MenuDataDto:
+    async def _execute(self, actor: UserDto, data: None) -> MenuDataResultDto:
         has_used_trial = await self.subscription_dao.has_used_trial(actor.telegram_id)
         current_subscription = await self.subscription_dao.get_current(actor.telegram_id)
 
@@ -45,7 +45,7 @@ class GetMenuData(Interactor[None, MenuDataDto]):
 
         referral_link = await self.referral_service.get_referral_link(actor.referral_code)
 
-        return MenuDataDto(
+        return MenuDataResultDto(
             is_referral_enabled=is_referral_enabled,
             has_used_trial=has_used_trial,
             available_trial=plan,

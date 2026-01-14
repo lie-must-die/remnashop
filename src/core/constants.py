@@ -51,5 +51,6 @@ TTL_7D: Final[int] = TIME_1D * 7
 RECENT_REGISTERED_MAX_COUNT: Final[int] = 25
 RECENT_ACTIVITY_MAX_COUNT: Final[int] = 25
 
-BATCH_SIZE: Final[int] = 20
+BATCH_SIZE_10: Final[int] = 10
+BATCH_SIZE_20: Final[int] = 20
 BATCH_DELAY: Final[int] = 1

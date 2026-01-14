@@ -19,6 +19,8 @@ class SubscriptionDao(Protocol):
 
     async def get_current(self, telegram_id: int) -> Optional[SubscriptionDto]: ...
 
+    async def update(self, subscription: SubscriptionDto) -> Optional[SubscriptionDto]: ...
+
     async def update_status(
         self,
         subscription_id: int,

@@ -1,13 +1,24 @@
 from dishka import AnyOf, Provider, Scope, alias, provide
 
-from src.application.common import Cryptographer, EventPublisher, EventSubscriber, Notifier
+from src.application.common import (
+    Cryptographer,
+    EventPublisher,
+    EventSubscriber,
+    Notifier,
+    Remnawave,
+)
 from src.application.services import (
     CommandService,
     NotificationService,
     ReferralService,
     WebhookService,
 )
-from src.infrastructure.services import CryptographerImpl, EventBusImpl
+from src.infrastructure.services import (
+    CryptographerImpl,
+    EventBusImpl,
+    NotificationQueue,
+    RemnawaveImpl,
+)
 
 
 class ServicesProvider(Provider):
@@ -22,6 +33,9 @@ class ServicesProvider(Provider):
     command = provide(source=CommandService)
     webhook = provide(source=WebhookService)
 
+    remnawave = provide(source=RemnawaveImpl, provides=Remnawave)
+
+    notification_queue = provide(source=NotificationQueue)
     notification = provide(
         NotificationService,
         scope=Scope.REQUEST,

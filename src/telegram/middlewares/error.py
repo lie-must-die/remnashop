@@ -13,7 +13,7 @@ from dishka import AsyncContainer
 from loguru import logger
 
 from src.application.common import EventPublisher, Notifier
-from src.application.dto.user import TempUserDto
+from src.application.dto import TempUserDto
 from src.application.events import ErrorEvent
 from src.application.use_cases.redirect import RedirectMenu, RedirectMenuDto
 from src.core.config import AppConfig
