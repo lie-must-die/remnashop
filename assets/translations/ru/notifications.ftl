@@ -116,11 +116,12 @@ ntf-subscription =
     .payment-creation-failed = ❌ <i>Ошибка при создании платежа. Попробуйте позже.</i>
 
 ntf-broadcast =
+    .message = { $content }
     .list-empty = ❌ <i>Список рассылок пуст.</i>
+    .plans-unavailable = ❌ <i>Нет доступных планов.</i>
     .audience-unavailable = ❌ <i>Нет пользователей для выбранной аудитории.</i>
     .content-empty = ❌ <i>Контент пуст.</i>
     .content-saved = ✅ <i>Контент успешно сохранен.</i>
-    .preview = { $content }
 
     .not-cancelable = ❌ <i>Рассылку невозможно отменить.</i>
     .canceled = ✅ <i>Рассылка успешно отменена.</i>

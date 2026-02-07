@@ -29,7 +29,6 @@ async def on_test_command(
         raise PermissionDeniedError
 
     logger.info(f"{user.log} Test command executed")
-
     # raise UnknownState
 
 

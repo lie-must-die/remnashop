@@ -1,17 +1,18 @@
-from typing import Optional
+from typing import Optional, cast
 from uuid import UUID
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
 from redis.asyncio import Redis
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import SubscriptionDao
 from src.application.dto import SubscriptionDto
 from src.core.enums import SubscriptionStatus
 from src.infrastructure.database.models import Subscription
+from src.infrastructure.database.models.user import User
 
 
 class SubscriptionDaoImpl(SubscriptionDao):
@@ -40,7 +41,7 @@ class SubscriptionDaoImpl(SubscriptionDao):
         await self.session.flush()
 
         logger.debug(
-            f"New subscription '{db_subscription.id}' created "
+            f"Created new subscription '{db_subscription.id}' "
             f"for remna user '{subscription.user_remna_id}'"
         )
         return self._convert_to_dto(db_subscription)
@@ -90,7 +91,7 @@ class SubscriptionDaoImpl(SubscriptionDao):
             .order_by(Subscription.created_at.desc())
         )
         result = await self.session.scalars(stmt)
-        db_subscriptions = list(result.all())
+        db_subscriptions = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_subscriptions)}' subscriptions for user '{telegram_id}'")
         return self._convert_to_dto_list(db_subscriptions)
@@ -170,3 +171,17 @@ class SubscriptionDaoImpl(SubscriptionDao):
             f"Subscription existence status for remna ID '{user_remna_id}' is '{is_exists}'"
         )
         return is_exists
+
+    async def count_active_by_plan(self, plan_id: int) -> int:
+        stmt = (
+            select(func.count(Subscription.id))
+            .join(User, User.current_subscription_id == Subscription.id)
+            .where(
+                Subscription.plan_snapshot["id"].as_integer() == plan_id,
+                Subscription.status == SubscriptionStatus.ACTIVE,
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar() or 0

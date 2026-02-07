@@ -1,16 +1,16 @@
-from typing import Optional
+from typing import Optional, cast
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
 from redis.asyncio import Redis
-from sqlalchemy import delete, func, or_, select, update
+from sqlalchemy import Integer, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.application.common.dao import UserDao
 from src.application.dto import UserDto
 from src.core.constants import TTL_1H, TTL_6H
-from src.core.enums import Role
+from src.core.enums import Role, SubscriptionStatus
 from src.infrastructure.database.models import Referral, Subscription, Transaction, User
 from src.infrastructure.redis.cache import invalidate_cache, provide_cache
 from src.infrastructure.redis.keys import (
@@ -67,7 +67,7 @@ class UserDaoImpl(UserDao):
 
         stmt = select(User).where(User.telegram_id.in_(telegram_ids))
         result = await self.session.scalars(stmt)
-        db_users = list(result.all())
+        db_users = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_users)}' users by telegram ID list")
         return self._convert_to_dto_list(db_users)
@@ -81,7 +81,7 @@ class UserDaoImpl(UserDao):
             )
         )
         result = await self.session.scalars(stmt)
-        db_users = list(result.all())
+        db_users = cast(list, result.all())
 
         logger.debug(f"Found '{len(db_users)}' users matching query '{query_name}'")
         return self._convert_to_dto_list(db_users)
@@ -101,7 +101,7 @@ class UserDaoImpl(UserDao):
     async def get_all(self, limit: int = 100, offset: int = 0) -> list[UserDto]:
         stmt = select(User).limit(limit).offset(offset)
         result = await self.session.scalars(stmt)
-        db_users = list(result.all())
+        db_users = cast(list, result.all())
 
         logger.debug(
             f"Retrieved '{len(db_users)}' users from database "
@@ -172,7 +172,7 @@ class UserDaoImpl(UserDao):
             stmt = stmt.where(User.role == role)
 
         result = await self.session.scalars(stmt)
-        db_users = list(result.all())
+        db_users = cast(list, result.all())
 
         logger.debug(f"Filtered '{len(db_users)}' users with role '{role}'")
         return self._convert_to_dto_list(db_users)
@@ -194,7 +194,7 @@ class UserDaoImpl(UserDao):
         logger.debug(f"Current subscription cleared for user '{telegram_id}'")
 
     async def get_blocked_users(self) -> list[UserDto]:
-        stmt = select(User).where(User.is_blocked == True).order_by(User.id.desc())  # noqa: E712
+        stmt = select(User).where(User.is_blocked.is_(True)).order_by(User.id.desc())
 
         result = await self.session.execute(stmt)
         db_users = result.scalars().all()
@@ -228,15 +228,16 @@ class UserDaoImpl(UserDao):
         return self._convert_to_dto_list(list(db_users))
 
     async def unblock_all(self) -> None:
-        stmt = update(User).where(User.is_blocked == True).values(is_blocked=False)  # noqa: E712
+        stmt = update(User).where(User.is_blocked.is_(True)).values(is_blocked=False)
         await self.session.execute(stmt)
         logger.debug("All users unblocked")
 
     async def count_blocked(self) -> int:
-        stmt = select(func.count()).select_from(User).where(User.is_blocked == True)  # noqa: E712
+        stmt = select(func.count()).select_from(User).where(User.is_blocked.is_(True))
         result = await self.session.execute(stmt)
-        logger.debug(f"Retrieved '{result or 0}' blocked users")
-        return result.scalar() or 0
+        count = result.scalar() or 0
+        logger.debug(f"Retrieved '{count}' blocked users")
+        return count
 
     async def has_any_subscription(self, telegram_id: int) -> bool:
         stmt = (
@@ -280,3 +281,124 @@ class UserDaoImpl(UserDao):
         logger.debug(
             f"Toggled blocked status for user '{telegram_id}', new status is '{new_status}'"
         )
+
+    async def count_active_non_blocked(self) -> int:
+        stmt = (
+            select(func.count())
+            .select_from(User)
+            .where(User.is_blocked.is_(False), User.is_bot_blocked.is_(False))
+        )
+        count = await self.session.scalar(stmt) or 0
+        logger.debug(f"Total active non-blocked users count is '{count}'")
+        return count
+
+    async def count_with_active_subscription(self) -> int:
+        stmt = (
+            select(func.count(User.id))
+            .join(Subscription, User.current_subscription_id == Subscription.id)
+            .where(
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+                Subscription.status == SubscriptionStatus.ACTIVE,
+            )
+        )
+        count = await self.session.scalar(stmt) or 0
+        logger.debug(f"Total users with active subscription count is '{count}'")
+        return count
+
+    async def count_with_expired_subscription(self) -> int:
+        stmt = (
+            select(func.count(User.id))
+            .join(Subscription, User.current_subscription_id == Subscription.id)
+            .where(
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+                Subscription.status == SubscriptionStatus.EXPIRED,
+            )
+        )
+        count = await self.session.scalar(stmt) or 0
+        logger.debug(f"Total users with expired subscription count is '{count}'")
+        return count
+
+    async def count_with_trial_subscription(self) -> int:
+        stmt = (
+            select(func.count(User.id))
+            .join(Subscription, User.current_subscription_id == Subscription.id)
+            .where(
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+                Subscription.is_trial.is_(True),
+            )
+        )
+        count = await self.session.scalar(stmt) or 0
+        logger.debug(f"Total users with trial subscription count is '{count}'")
+        return count
+
+    async def count_without_subscription(self) -> int:
+        stmt = select(func.count(User.id)).where(
+            User.is_blocked.is_(False),
+            User.is_bot_blocked.is_(False),
+            User.current_subscription_id.is_(None),
+        )
+        count = await self.session.scalar(stmt) or 0
+        logger.debug(f"Total users without subscription count is '{count}'")
+        return count
+
+    async def get_active_non_blocked(self) -> list[UserDto]:
+        stmt = select(User).where(User.is_blocked.is_(False), User.is_bot_blocked.is_(False))
+        result = await self.session.scalars(stmt)
+        db_users = cast(list, result.all())
+        logger.debug(f"Retrieved '{len(db_users)}' active non-blocked users")
+        return self._convert_to_dto_list(db_users)
+
+    async def get_without_subscription(self) -> list[UserDto]:
+        stmt = select(User).where(
+            User.is_blocked.is_(False),
+            User.is_bot_blocked.is_(False),
+            User.current_subscription_id.is_(None),
+        )
+        result = await self.session.execute(stmt)
+        return self._convert_to_dto_list(list(result.scalars()))
+
+    async def get_with_expired_subscription(self) -> list[UserDto]:
+        stmt = (
+            select(User)
+            .join(Subscription, User.current_subscription_id == Subscription.id)
+            .where(
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+                Subscription.status == SubscriptionStatus.EXPIRED,
+            )
+        )
+        result = await self.session.execute(stmt)
+        return self._convert_to_dto_list(list(result.scalars()))
+
+    async def get_with_trial_subscription(self) -> list[UserDto]:
+        stmt = (
+            select(User)
+            .join(Subscription, User.current_subscription_id == Subscription.id)
+            .where(
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+                Subscription.is_trial.is_(True),
+            )
+        )
+        result = await self.session.execute(stmt)
+        return self._convert_to_dto_list(list(result.scalars()))
+
+    async def get_active_by_plan(self, plan_id: int) -> list[UserDto]:
+        stmt = (
+            select(User)
+            .join(Subscription, User.current_subscription_id == Subscription.id)
+            .where(
+                User.is_blocked.is_(False),
+                User.is_bot_blocked.is_(False),
+                Subscription.status == SubscriptionStatus.ACTIVE,
+                Subscription.plan_snapshot["id"].as_integer() == plan_id,
+            )
+        )
+        result = await self.session.execute(stmt)
+        db_users = list(result.scalars().all())
+
+        logger.debug(f"Retrieved '{len(db_users)}' active users for plan_id '{plan_id}'")
+        return self._convert_to_dto_list(db_users)

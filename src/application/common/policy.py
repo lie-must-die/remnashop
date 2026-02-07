@@ -23,6 +23,7 @@ class Permission(UpperStrEnum):
     COMMAND_TEST = auto()
     USER_SEARCH = auto()
     MANAGE_ADMINS = auto()
+    BROADCAST = auto()
     #
     VIEW_DASHBOARD = auto()
     VIEW_STATISTICS = auto()

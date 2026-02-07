@@ -2,10 +2,9 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Optional
 from uuid import UUID
 
-from aiogram.types import BufferedInputFile
 from aiogram.utils.formatting import Text
 
-from src.application.dto import BuildInfoDto, MessagePayloadDto
+from src.application.dto import BuildInfoDto, MediaDescriptorDto, MessagePayloadDto
 from src.core.enums import AccessMode, MediaType, SubscriptionStatus, SystemNotificationType
 from src.core.types import NotificationType
 
@@ -27,7 +26,7 @@ class ErrorEvent(BaseEvent, BuildInfoDto):
 
     def as_payload(
         self,
-        media: BufferedInputFile,
+        media: MediaDescriptorDto,
         error_type: str,
         error_message: Text,
     ) -> "MessagePayloadDto":
@@ -76,7 +75,7 @@ class WebhookErrorEvent(BaseEvent):
 
     def as_payload(
         self,
-        media: BufferedInputFile,
+        media: MediaDescriptorDto,
         error_type: str,
         error_message: Text,
     ) -> "MessagePayloadDto":

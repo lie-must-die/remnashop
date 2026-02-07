@@ -27,12 +27,12 @@ class Referral(BaseSql, TimestampMixin):
     level: Mapped[ReferralLevel]
 
     referrer: Mapped["User"] = relationship(
-        foreign_keys=[referrer_telegram_id],
         lazy="selectin",
+        foreign_keys=[referrer_telegram_id],
     )
     referred: Mapped["User"] = relationship(
-        foreign_keys=[referred_telegram_id],
         lazy="selectin",
+        foreign_keys=[referred_telegram_id],
     )
     rewards: Mapped[list["ReferralReward"]] = relationship(
         back_populates="referral",
@@ -58,11 +58,8 @@ class ReferralReward(BaseSql, TimestampMixin):
 
     referral: Mapped["Referral"] = relationship(
         back_populates="rewards",
-        foreign_keys=[referral_id],
         lazy="selectin",
+        foreign_keys=[referral_id],
     )
 
-    user: Mapped["User"] = relationship(
-        foreign_keys=[user_telegram_id],
-        lazy="selectin",
-    )
+    user: Mapped["User"] = relationship(lazy="selectin", foreign_keys=[user_telegram_id])

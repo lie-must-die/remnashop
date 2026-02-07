@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, cast
 from uuid import UUID
 
 from adaptix import Retort
@@ -31,8 +31,7 @@ class BroadcastDaoImpl(BroadcastDao):
 
         self._convert_to_dto = self.conversion_retort.get_converter(Broadcast, BroadcastDto)
         self._convert_to_dto_list = self.conversion_retort.get_converter(
-            list[Broadcast],
-            list[BroadcastDto],
+            list[Broadcast], list[BroadcastDto]
         )
 
     async def create(self, broadcast: BroadcastDto) -> BroadcastDto:
@@ -55,6 +54,14 @@ class BroadcastDaoImpl(BroadcastDao):
 
         logger.debug(f"Broadcast task '{task_id}' not found")
         return None
+
+    async def get_all(self) -> list[BroadcastDto]:
+        stmt = select(Broadcast).order_by(Broadcast.created_at.desc())
+        result = await self.session.scalars(stmt)
+        db_broadcasts = cast(list, result.all())
+
+        logger.debug(f"Retrieved '{len(db_broadcasts)}' broadcasts")
+        return self._convert_to_dto_list(db_broadcasts)
 
     async def update_status(self, task_id: UUID, status: BroadcastStatus) -> None:
         stmt = update(Broadcast).where(Broadcast.task_id == task_id).values(status=status)
@@ -106,7 +113,7 @@ class BroadcastDaoImpl(BroadcastDao):
     async def get_active(self) -> list[BroadcastDto]:
         stmt = select(Broadcast).where(Broadcast.status == BroadcastStatus.PROCESSING)
         result = await self.session.scalars(stmt)
-        db_broadcasts = list(result.all())
+        db_broadcasts = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_broadcasts)}' active broadcasts")
         return self._convert_to_dto_list(db_broadcasts)
@@ -125,3 +132,22 @@ class BroadcastDaoImpl(BroadcastDao):
             logger.debug(f"No old broadcasts found to delete for the last '{days}' days")
 
         return count
+
+    async def bulk_update_messages(self, messages: list[BroadcastMessageDto]) -> None:
+        if not messages:
+            logger.debug("No broadcast messages to update in bulk")
+            return
+
+        stmt = update(BroadcastMessage)
+
+        data = [
+            {
+                "id": msg.id,
+                "status": msg.status,
+                "message_id": msg.message_id,
+            }
+            for msg in messages
+        ]
+
+        await self.session.execute(stmt, data, execution_options={"synchronize_session": None})
+        logger.debug(f"Bulk updated '{len(data)}' broadcast messages")

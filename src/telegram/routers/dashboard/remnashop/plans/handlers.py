@@ -1,10 +1,11 @@
+import base64
 import io
 from typing import Optional
 from uuid import UUID
 
 from adaptix import Retort
 from aiogram import Bot
-from aiogram.types import BufferedInputFile, CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.input import MessageInput
 from aiogram_dialog.widgets.kbd import Button, Select
@@ -16,7 +17,7 @@ from remnapy.enums.users import TrafficLimitStrategy
 
 from src.application.common import Notifier
 from src.application.common.dao import PlanDao
-from src.application.dto import MessagePayloadDto, PlanDto, UserDto
+from src.application.dto import MediaDescriptorDto, MessagePayloadDto, PlanDto, UserDto
 from src.application.use_cases.plan import (
     AddAllowedUserToPlan,
     AddAllowedUserToPlanDto,
@@ -138,13 +139,19 @@ async def on_export(
 
     try:
         raw_json = await export_plans(user, selected_plans)
-        file = BufferedInputFile(file=raw_json.encode("utf-8"), filename="exported_plans.json")
+        json_bytes = raw_json.encode("utf-8")
+
+        media = MediaDescriptorDto(
+            kind="bytes",
+            value=base64.b64encode(json_bytes).decode("ascii"),
+            filename="exported_plans.json",
+        )
 
         await notifier.notify_user(
             user=user,
             payload=MessagePayloadDto(
                 i18n_key="ntf-plan.export-success",
-                media=file,
+                media=media,
                 media_type=MediaType.DOCUMENT,
                 disable_default_markup=False,
                 delete_after=None,
@@ -155,7 +162,8 @@ async def on_export(
 
     except ValueError:
         await notifier.notify_user(
-            user=user, payload=MessagePayloadDto(i18n_key="ntf-plan.export-failed")
+            user=user,
+            payload=MessagePayloadDto(i18n_key="ntf-plan.export-failed"),
         )
 
 

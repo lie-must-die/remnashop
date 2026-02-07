@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, cast
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
@@ -49,7 +49,7 @@ class ReferralDaoImpl(ReferralDao):
         await self.session.flush()
 
         logger.debug(
-            f"Referral created: referrer '{referral.referrer.telegram_id}' "
+            f"Created referral: referrer '{referral.referrer.telegram_id}' "
             f"invited referred '{referral.referred.telegram_id}'"
         )
         return self._convert_to_referral_dto(db_referral)
@@ -95,7 +95,7 @@ class ReferralDaoImpl(ReferralDao):
             .order_by(Referral.created_at.desc())
         )
         result = await self.session.scalars(stmt)
-        db_referrals = list(result.all())
+        db_referrals = cast(list, result.all())
 
         logger.debug(
             f"Retrieved '{len(db_referrals)}' referrals for user '{referrer_id}' "
@@ -114,13 +114,13 @@ class ReferralDaoImpl(ReferralDao):
         self.session.add(db_reward)
         await self.session.flush()
 
-        logger.debug(f"Reward amount '{reward.amount}' created for referral ID '{referral_id}'")
+        logger.debug(f"Created reward amount '{reward.amount}' for referral ID '{referral_id}'")
         return self._convert_to_reward_dto(db_reward)
 
     async def get_pending_rewards(self) -> list[ReferralRewardDto]:
-        stmt = select(ReferralReward).where(ReferralReward.is_issued == False)  # noqa: E712
+        stmt = select(ReferralReward).where(ReferralReward.is_issued.is_(False))
         result = await self.session.scalars(stmt)
-        db_rewards = list(result.all())
+        db_rewards = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_rewards)}' pending rewards")
         return self._convert_to_reward_list(db_rewards)
@@ -139,7 +139,7 @@ class ReferralDaoImpl(ReferralDao):
             select(func.sum(ReferralReward.amount))
             .where(ReferralReward.user_telegram_id == telegram_id)
             .where(ReferralReward.type == reward_type)
-            .where(ReferralReward.is_issued == True)  # noqa: E712
+            .where(ReferralReward.is_issued.is_(True))
         )
         total = await self.session.scalar(stmt) or 0
 

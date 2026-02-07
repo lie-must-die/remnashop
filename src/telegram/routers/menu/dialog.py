@@ -15,6 +15,7 @@ from src.application.common.policy import Permission
 from src.core.constants import PAYMENT_PREFIX
 from src.core.enums import BannerName
 from src.telegram.keyboards import connect_buttons
+from src.telegram.routers.dashboard.users.handlers import on_user_search
 from src.telegram.states import Dashboard, MainMenu, Subscription
 from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
@@ -87,7 +88,7 @@ menu = Window(
             when=require_permission(Permission.VIEW_DASHBOARD),
         ),
     ),
-    # MessageInput(func=on_user_search),
+    MessageInput(func=on_user_search),
     IgnoreUpdate(),
     state=MainMenu.MAIN,
     getter=menu_getter,

@@ -628,7 +628,7 @@ class SendMessageToUser(Interactor[SendMessageToUserDto, bool]):
         if not target_user:
             raise ValueError(f"User '{data.telegram_id}' not found")
 
-        support_text = self.i18n.get("contact-support-help")
+        support_text = self.i18n.get("message.help")
         support_username = self.config.bot.support_username.get_secret_value()
 
         payload = data.payload.copy()

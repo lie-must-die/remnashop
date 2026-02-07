@@ -1,11 +1,15 @@
 import asyncio
+import base64
+import string
 import traceback
+from dataclasses import asdict
 from typing import Any, Callable, Optional, Sequence, Union
 
 from aiogram import Bot
 from aiogram.exceptions import TelegramForbiddenError
 from aiogram.types import (
     BufferedInputFile,
+    FSInputFile,
     InlineKeyboardButton,
     InlineKeyboardMarkup,
     Message,
@@ -24,6 +28,7 @@ from src.application.dto import (
     TempUserDto,
     UserDto,
 )
+from src.application.dto.message_payload import MediaDescriptorDto
 from src.application.events import ErrorEvent, SystemEvent
 from src.core.config import AppConfig
 from src.core.enums import Locale, Role
@@ -100,13 +105,14 @@ class NotificationService(Notifier):
             )
         )
 
-        error_file = BufferedInputFile(
-            file=traceback_str.encode(),
+        media = MediaDescriptorDto(
+            kind="bytes",
+            value=base64.b64encode(traceback_str.encode("utf-8")).decode(),
             filename=f"error_{event.event_id}.txt",
         )
 
         await self.notify_admins(
-            event.as_payload(error_file, error_type, error_message),
+            event.as_payload(media, error_type, error_message),
             roles=[Role.OWNER, Role.DEV],
         )
 
@@ -147,6 +153,12 @@ class NotificationService(Notifier):
         user: Union[TempUserDto, UserDto],
         payload: MessagePayloadDto,
     ) -> Optional[Message]:
+        render_kwargs = payload.i18n_kwargs.copy()
+
+        if isinstance(user, UserDto) and payload.i18n_key == "ntf-broadcast.message":
+            user_data = asdict(user)
+            render_kwargs = {**user_data, **payload.i18n_kwargs}
+
         reply_markup = self._prepare_reply_markup(
             payload.reply_markup,
             payload.disable_default_markup,
@@ -158,7 +170,7 @@ class NotificationService(Notifier):
         text = self._get_translated_text(
             locale=user.language,
             i18n_key=payload.i18n_key,
-            i18n_kwargs=payload.i18n_kwargs,
+            i18n_kwargs=render_kwargs,
         )
 
         kwargs: dict[str, Any] = {
@@ -177,12 +189,13 @@ class NotificationService(Notifier):
                 )
             elif payload.media:
                 method = self._get_media_method(payload)
+                media = self._build_media(payload.media)
 
                 if not method:
                     logger.warning(f"Unknown media type for payload '{payload}'")
                     return None
 
-                message = await method(user.telegram_id, payload.media, caption=text, **kwargs)
+                message = await method(user.telegram_id, media, caption=text, **kwargs)
             else:
                 logger.error(f"Payload must contain text or media for user '{user.telegram_id}'")
                 return None
@@ -227,7 +240,14 @@ class NotificationService(Notifier):
             return ""
 
         i18n = self.translator_hub.get_translator_by_locale(locale)
-        return i18n.get(i18n_key, **i18n_kwargs)
+        translated_text = i18n.get(i18n_key, **i18n_kwargs)
+
+        if i18n_key == "ntf-broadcast.message":
+            if "$" in translated_text and i18n_kwargs:
+                template = string.Template(translated_text)
+                return template.safe_substitute(i18n_kwargs)
+
+        return translated_text
 
     def _prepare_reply_markup(
         self,
@@ -308,3 +328,21 @@ class NotificationService(Notifier):
             logger.debug(f"Keyboard removed from notification '{message_id}'")
         except Exception as e:
             logger.error(f"Failed to remove keyboard from '{message_id}': {e}")
+
+    def _build_media(self, media: MediaDescriptorDto) -> Union[str, BufferedInputFile, FSInputFile]:
+        if media.kind == "file_id":
+            return media.value
+
+        if media.kind == "fs":
+            return FSInputFile(
+                path=media.value,
+                filename=media.filename,
+            )
+
+        if media.kind == "bytes":
+            return BufferedInputFile(
+                file=base64.b64decode(media.value),
+                filename=media.filename or "file.bin",
+            )
+
+        raise ValueError(f"Unsupported media kind '{media.kind}'")

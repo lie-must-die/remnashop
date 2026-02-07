@@ -19,7 +19,7 @@ class BroadcastDto(BaseDto, TrackableMixin, TimestampMixin):
     success_count: int = 0
     failed_count: int = 0
 
-    payload: "MessagePayloadDto"
+    payload: MessagePayloadDto
 
     messages: list["BroadcastMessageDto"] = field(default_factory=list)
 

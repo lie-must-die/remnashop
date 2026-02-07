@@ -1,4 +1,4 @@
-from typing import Final
+from typing import Final, Optional
 
 from loguru import logger
 from pydantic import SecretStr
@@ -40,14 +40,16 @@ class ChangeAccessMode(Interactor[AccessMode, None]):
         logger.info(f"{actor.log} Changed access mode from '{old_mode}' to '{new_mode}'")
 
 
-class ToggleNotification(Interactor[NotificationType, SettingsDto]):
+class ToggleNotification(Interactor[NotificationType, Optional[SettingsDto]]):
     required_permission = Permission.SETTINGS_NOTIFICATIONS
 
     def __init__(self, uow: UnitOfWork, settings_dao: SettingsDao) -> None:
         self.uow = uow
         self.settings_dao = settings_dao
 
-    async def _execute(self, actor: UserDto, notification_type: NotificationType) -> SettingsDto:
+    async def _execute(
+        self, actor: UserDto, notification_type: NotificationType
+    ) -> Optional[SettingsDto]:
         async with self.uow:
             settings = await self.settings_dao.get()
             settings.notifications.toggle(notification_type)

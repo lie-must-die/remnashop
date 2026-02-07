@@ -1,4 +1,4 @@
-from aiogram.types import CallbackQuery, FSInputFile
+from aiogram.types import CallbackQuery
 from aiogram_dialog import DialogManager
 from aiogram_dialog.widgets.kbd import Button
 from dishka import FromDishka
@@ -6,7 +6,7 @@ from dishka.integrations.aiogram_dialog import inject
 from loguru import logger
 
 from src.application.common import Notifier, Redirect
-from src.application.dto import MessagePayloadDto, UserDto
+from src.application.dto import MediaDescriptorDto, MessagePayloadDto, UserDto
 from src.application.use_cases.logs import GetLogs
 from src.application.use_cases.user import RevokeRole
 from src.core.constants import LOG_DIR, USER_KEY
@@ -29,13 +29,17 @@ async def on_logs_request(
 
     try:
         log_file = await get_logs(user)
-        file = FSInputFile(path=log_file.path, filename=log_file.display_name)
+        media = MediaDescriptorDto(
+            kind="fs",
+            value=str(log_file.path),
+            filename=log_file.display_name,
+        )
 
         await notifier.notify_user(
             user=user,
             payload=MessagePayloadDto(
                 i18n_key="",
-                media=file,
+                media=media,
                 media_type=MediaType.DOCUMENT,
                 delete_after=None,
                 disable_default_markup=False,

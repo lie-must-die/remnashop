@@ -1,13 +1,12 @@
-from dataclasses import asdict, dataclass, field
-from typing import Any, Optional
+from dataclasses import dataclass, field
+from typing import Any
 
 from remnapy.enums.users import TrafficLimitStrategy
 
-from src.application.dto import MessagePayloadDto
 from src.core.enums import UserNotificationType
 from src.core.types import NotificationType
 
-from .base import BaseEvent, UserEvent
+from .base import UserEvent
 
 
 @dataclass(frozen=True, kw_only=True)

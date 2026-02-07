@@ -12,9 +12,82 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.create_table(
+        "broadcasts",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("task_id", sa.UUID(), nullable=False),
+        sa.Column(
+            "status",
+            sa.Enum(
+                "PROCESSING", "COMPLETED", "CANCELED", "DELETED", "ERROR", name="broadcast_status"
+            ),
+            nullable=False,
+        ),
+        sa.Column(
+            "audience",
+            sa.Enum(
+                "ALL",
+                "PLAN",
+                "SUBSCRIBED",
+                "UNSUBSCRIBED",
+                "EXPIRED",
+                "TRIAL",
+                name="broadcast_audience",
+            ),
+            nullable=False,
+        ),
+        sa.Column("total_count", sa.Integer(), nullable=False),
+        sa.Column("success_count", sa.Integer(), nullable=False),
+        sa.Column("failed_count", sa.Integer(), nullable=False),
+        sa.Column("payload", postgresql.JSONB(astext_type=sa.Text()), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("timezone('UTC', now())"),
+            nullable=False,
+        ),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("task_id"),
+    )
+    op.create_index(op.f("ix_broadcasts_status"), "broadcasts", ["status"], unique=False)
+
+    op.create_table(
+        "payment_gateways",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("order_index", sa.Integer(), nullable=False),
+        sa.Column(
+            "type",
+            sa.Enum(
+                "TELEGRAM_STARS",
+                "YOOKASSA",
+                "YOOMONEY",
+                "CRYPTOMUS",
+                "HELEKET",
+                "CRYPTOPAY",
+                "ROBOKASSA",
+                name="payment_gateway_type",
+            ),
+            nullable=False,
+        ),
+        sa.Column("currency", sa.Enum("USD", "XTR", "RUB", name="currency"), nullable=False),
+        sa.Column("is_active", sa.Boolean(), nullable=False),
+        sa.Column("settings", postgresql.JSONB(astext_type=sa.Text()), nullable=True),
+        sa.PrimaryKeyConstraint("id"),
+        sa.UniqueConstraint("type"),
+    )
+    op.create_index(
+        op.f("ix_payment_gateways_order_index"), "payment_gateways", ["order_index"], unique=False
+    )
+
+    op.create_table(
         "plans",
         sa.Column("id", sa.Integer(), nullable=False),
-        sa.Column("public_code", sa.String(), unique=True, index=True, nullable=False),
+        sa.Column("public_code", sa.String(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column("description", sa.String(), nullable=True),
         sa.Column("tag", sa.String(), nullable=True),
@@ -35,8 +108,8 @@ def upgrade() -> None:
             sa.Enum("NO_RESET", "DAY", "WEEK", "MONTH", name="traffic_limit_strategy"),
             nullable=False,
         ),
-        sa.Column("traffic_limit", sa.Integer(), nullable=True),
-        sa.Column("device_limit", sa.Integer(), nullable=True),
+        sa.Column("traffic_limit", sa.Integer(), nullable=False),
+        sa.Column("device_limit", sa.Integer(), nullable=False),
         sa.Column("allowed_user_ids", sa.ARRAY(sa.BigInteger()), nullable=False),
         sa.Column("internal_squads", sa.ARRAY(sa.UUID()), nullable=False),
         sa.Column("external_squad", sa.UUID(), nullable=True),
@@ -58,6 +131,8 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_plans_name"), "plans", ["name"], unique=True)
+    op.create_index(op.f("ix_plans_order_index"), "plans", ["order_index"], unique=False)
+    op.create_index(op.f("ix_plans_public_code"), "plans", ["public_code"], unique=True)
 
     op.create_table(
         "settings",
@@ -151,9 +226,9 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("telegram_id", name="uq_users_telegram_id"),
     )
     op.create_index(op.f("ix_users_referral_code"), "users", ["referral_code"], unique=True)
+    op.create_index(op.f("ix_users_role"), "users", ["role"], unique=False)
     op.create_index(op.f("ix_users_telegram_id"), "users", ["telegram_id"], unique=True)
     op.create_index(op.f("ix_users_username"), "users", ["username"], unique=False)
 
@@ -195,8 +270,13 @@ def upgrade() -> None:
             server_default=sa.text("timezone('UTC', now())"),
             nullable=False,
         ),
+        sa.ForeignKeyConstraint(["user_telegram_id"], ["users.telegram_id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(
+        op.f("ix_subscriptions_expire_at"), "subscriptions", ["expire_at"], unique=False
+    )
+    op.create_index(op.f("ix_subscriptions_status"), "subscriptions", ["status"], unique=False)
     op.create_index(
         op.f("ix_subscriptions_user_remna_id"), "subscriptions", ["user_remna_id"], unique=False
     )
@@ -208,20 +288,12 @@ def upgrade() -> None:
     )
 
     op.create_foreign_key(
-        "fk_users_current_subscription",
+        "fk_users_subscription",
         "users",
         "subscriptions",
         ["current_subscription_id"],
         ["id"],
         ondelete="SET NULL",
-    )
-    op.create_foreign_key(
-        "fk_subscriptions_user",
-        "subscriptions",
-        "users",
-        ["user_telegram_id"],
-        ["telegram_id"],
-        ondelete="CASCADE",
     )
 
     op.create_table(
@@ -233,6 +305,10 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["plan_id"], ["plans.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(
+        op.f("ix_plan_durations_order_index"), "plan_durations", ["order_index"], unique=False
+    )
+
     op.create_table(
         "referrals",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -255,6 +331,19 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["referrer_telegram_id"], ["users.telegram_id"]),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(
+        op.f("ix_referrals_referred_telegram_id"),
+        "referrals",
+        ["referred_telegram_id"],
+        unique=True,
+    )
+    op.create_index(
+        op.f("ix_referrals_referrer_telegram_id"),
+        "referrals",
+        ["referrer_telegram_id"],
+        unique=False,
+    )
+
     op.create_table(
         "transactions",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -304,8 +393,41 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_transactions_payment_id"), "transactions", ["payment_id"], unique=True)
+    op.create_index(op.f("ix_transactions_status"), "transactions", ["status"], unique=False)
     op.create_index(
         op.f("ix_transactions_user_telegram_id"), "transactions", ["user_telegram_id"], unique=False
+    )
+
+    op.create_table(
+        "broadcast_messages",
+        sa.Column("id", sa.Integer(), nullable=False),
+        sa.Column("broadcast_id", sa.Integer(), nullable=False),
+        sa.Column("user_telegram_id", sa.BigInteger(), nullable=False),
+        sa.Column("message_id", sa.BigInteger(), nullable=True),
+        sa.Column(
+            "status",
+            sa.Enum(
+                "SENT", "FAILED", "EDITED", "DELETED", "PENDING", name="broadcast_message_status"
+            ),
+            nullable=False,
+        ),
+        sa.ForeignKeyConstraint(["broadcast_id"], ["broadcasts.id"], ondelete="CASCADE"),
+        sa.PrimaryKeyConstraint("id"),
+    )
+    op.create_index(
+        op.f("ix_broadcast_messages_broadcast_id"),
+        "broadcast_messages",
+        ["broadcast_id"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_broadcast_messages_status"), "broadcast_messages", ["status"], unique=False
+    )
+    op.create_index(
+        op.f("ix_broadcast_messages_user_telegram_id"),
+        "broadcast_messages",
+        ["user_telegram_id"],
+        unique=False,
     )
 
     op.create_table(
@@ -317,6 +439,7 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["plan_duration_id"], ["plan_durations.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
+
     op.create_table(
         "referral_rewards",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -343,26 +466,27 @@ def upgrade() -> None:
         sa.ForeignKeyConstraint(["user_telegram_id"], ["users.telegram_id"]),
         sa.PrimaryKeyConstraint("id"),
     )
+    op.create_index(
+        op.f("ix_referral_rewards_user_telegram_id"),
+        "referral_rewards",
+        ["user_telegram_id"],
+        unique=False,
+    )
 
 
 def downgrade() -> None:
-    op.drop_constraint("fk_users_current_subscription", "users", type_="foreignkey")
-    op.drop_constraint("fk_subscriptions_user", "subscriptions", type_="foreignkey")
-
     op.drop_table("referral_rewards")
     op.drop_table("plan_prices")
-    op.drop_index(op.f("ix_transactions_user_telegram_id"), table_name="transactions")
-    op.drop_index(op.f("ix_transactions_payment_id"), table_name="transactions")
+    op.drop_table("broadcast_messages")
     op.drop_table("transactions")
     op.drop_table("referrals")
     op.drop_table("plan_durations")
-    op.drop_index(op.f("ix_users_username"), table_name="users")
-    op.drop_index(op.f("ix_users_telegram_id"), table_name="users")
-    op.drop_index(op.f("ix_users_referral_code"), table_name="users")
-    op.drop_table("users")
-    op.drop_index(op.f("ix_subscriptions_user_telegram_id"), table_name="subscriptions")
-    op.drop_index(op.f("ix_subscriptions_user_remna_id"), table_name="subscriptions")
+
+    op.drop_constraint("fk_users_subscription", "users", type_="foreignkey")
     op.drop_table("subscriptions")
+
+    op.drop_table("users")
     op.drop_table("settings")
-    op.drop_index(op.f("ix_plans_name"), table_name="plans")
     op.drop_table("plans")
+    op.drop_table("payment_gateways")
+    op.drop_table("broadcasts")

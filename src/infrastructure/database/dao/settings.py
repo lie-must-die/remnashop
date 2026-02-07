@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
@@ -38,7 +38,7 @@ class SettingsDaoImpl(SettingsDao):
         await self.session.flush()
         await self.session.commit()
 
-        logger.debug("Default settings record created in database")
+        logger.debug("Created default settings")
         return self._convert_to_dto(db_settings)
 
     @provide_cache(prefix=SETTINGS_PREFIX, ttl=TTL_6H)
@@ -54,10 +54,10 @@ class SettingsDaoImpl(SettingsDao):
         return self._convert_to_dto(db_settings)
 
     @invalidate_cache(key_builder=SETTINGS_PREFIX)
-    async def update(self, settings: SettingsDto) -> SettingsDto:
+    async def update(self, settings: SettingsDto) -> Optional[SettingsDto]:
         if not settings.changed_data:
             logger.warning("No changes detected in settings, skipping update")
-            return await self.get()
+            return None
 
         values_to_update = {}
 
@@ -80,7 +80,7 @@ class SettingsDaoImpl(SettingsDao):
 
         if not db_settings:
             logger.warning(f"Failed to update settings with ID '{settings.id}': record not found")
-            return await self.get()
+            return None
 
         logger.debug(f"Settings updated with keys '{list(values_to_update.keys())}'")
         return self._convert_to_dto(db_settings)

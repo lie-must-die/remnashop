@@ -18,7 +18,7 @@ GITHUB_RELEASE_URL: Final[str] = "https://api.github.com/repos/snoups/remnashop/
 
 
 @broker.task(schedule=[{"cron": "*/60 * * * *"}], retry_on_error=False)
-@inject
+@inject(patch_module=True)
 async def check_bot_update(
     config: FromDishka[AppConfig],
     retort: FromDishka[Retort],

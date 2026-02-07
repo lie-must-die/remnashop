@@ -4,7 +4,7 @@ from adaptix import Retort
 from adaptix.conversion import ConversionRetort
 from loguru import logger
 from redis.asyncio import Redis
-from sqlalchemy import ColumnElement, and_, any_, case, delete, or_, select, update
+from sqlalchemy import ColumnElement, and_, any_, case, delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -84,7 +84,7 @@ class PlanDaoImpl(PlanDao):
     async def get_active_plans(self) -> list[PlanDto]:
         stmt = (
             select(Plan)
-            .where(Plan.is_active == True)  # noqa: E712
+            .where(Plan.is_active.is_(True))
             .options(selectinload(Plan.durations).selectinload(PlanDuration.prices))
             .order_by(Plan.order_index.asc())
         )
@@ -121,8 +121,8 @@ class PlanDaoImpl(PlanDao):
 
         stmt = (
             select(Plan)
-            .where(Plan.is_active == True)  # noqa: E712
-            .where(Plan.is_trial == True)  # noqa: E712
+            .where(Plan.is_active.is_(True))
+            .where(Plan.is_trial.is_(True))
             .where(
                 or_(
                     Plan.availability != PlanAvailability.ALLOWED,
@@ -146,14 +146,13 @@ class PlanDaoImpl(PlanDao):
     async def get_all(self) -> list[PlanDto]:
         stmt = (
             select(Plan)
-            # .where(Plan.is_active == True)  # noqa: E712
             .options(selectinload(Plan.durations).selectinload(PlanDuration.prices))
             .order_by(Plan.order_index.asc())
         )
         result = await self.session.scalars(stmt)
-        db_plans = list(result.all())
+        db_plans = cast(list, result.all())
 
-        logger.debug(f"Retrieved '{len(db_plans)}' active plans")
+        logger.debug(f"Retrieved '{len(db_plans)}' all plans")
         return self._convert_to_dto_list(db_plans)
 
     async def update(self, plan: PlanDto) -> Optional[PlanDto]:
@@ -242,7 +241,7 @@ class PlanDaoImpl(PlanDao):
         stmt = (
             select(Plan)
             .where(Plan.availability == PlanAvailability.ALLOWED)
-            .where(Plan.is_active == True)  # noqa: E712
+            .where(Plan.is_active.is_(True))
             .options(selectinload(Plan.durations).selectinload(PlanDuration.prices))
             .order_by(Plan.order_index.asc())
         )
@@ -255,3 +254,13 @@ class PlanDaoImpl(PlanDao):
             f"availability '{PlanAvailability.ALLOWED}'"
         )
         return self._convert_to_dto_list(list(db_plans))
+
+    async def count_non_trial(self) -> int:
+        stmt = select(func.count(Plan.id)).where(
+            Plan.is_active.is_(True),
+            Plan.is_trial.is_(False),
+        )
+
+        count = await self.session.scalar(stmt) or 0
+        logger.debug(f"Counted '{count}' non-trial active plans")
+        return count

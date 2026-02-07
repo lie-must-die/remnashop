@@ -1,5 +1,5 @@
 from aiogram_dialog import Dialog, StartMode, Window
-from aiogram_dialog.widgets.kbd import NumberedPager, Row, Start, StubScroll, SwitchTo
+from aiogram_dialog.widgets.kbd import Group, NumberedPager, Row, Start, StubScroll, SwitchTo
 
 from src.core.enums import BannerName
 from src.telegram.keyboards import main_menu_button
@@ -74,7 +74,10 @@ hosts = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-remnawave-hosts"),
     StubScroll(id="scroll_hosts", pages="pages"),
-    NumberedPager(scroll="scroll_hosts"),
+    Group(
+        NumberedPager(scroll="scroll_hosts"),
+        width=8,
+    ),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),
@@ -92,7 +95,10 @@ nodes = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-remnawave-nodes"),
     StubScroll(id="scroll_nodes", pages="pages"),
-    NumberedPager(scroll="scroll_nodes"),
+    Group(
+        NumberedPager(scroll="scroll_nodes"),
+        width=8,
+    ),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),
@@ -110,7 +116,10 @@ inbounds = Window(
     Banner(BannerName.DASHBOARD),
     I18nFormat("msg-remnawave-inbounds"),
     StubScroll(id="scroll_inbounds", pages="pages"),
-    NumberedPager(scroll="scroll_inbounds"),
+    Group(
+        NumberedPager(scroll="scroll_inbounds"),
+        width=8,
+    ),
     Row(
         SwitchTo(
             text=I18nFormat("btn-back.general"),

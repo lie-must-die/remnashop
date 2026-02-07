@@ -1,9 +1,7 @@
 from typing import TYPE_CHECKING, Annotated, NewType, TypeAlias, Union
 
 from aiogram.types import (
-    BufferedInputFile,
     ForceReply,
-    FSInputFile,
     InlineKeyboardMarkup,
     ReplyKeyboardMarkup,
     ReplyKeyboardRemove,
@@ -20,8 +18,6 @@ if TYPE_CHECKING:
 else:
     ListStr = NewType("ListStr", list[str])
     ListLocale = NewType("ListLocale", list[Locale])
-
-AnyMedia: TypeAlias = Union[BufferedInputFile, FSInputFile, str]
 
 AnyKeyboard: TypeAlias = Union[
     InlineKeyboardMarkup,

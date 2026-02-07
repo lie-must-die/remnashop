@@ -42,7 +42,7 @@ class TransactionDaoImpl(TransactionDao):
         self.session.add(db_transaction)
         await self.session.flush()
 
-        logger.debug(f"New transaction '{transaction.payment_id}' created")
+        logger.debug(f"Created new transaction '{transaction.payment_id}'")
         return self._convert_to_dto(db_transaction)
 
     async def get_by_payment_id(self, payment_id: UUID) -> Optional[TransactionDto]:
@@ -59,7 +59,7 @@ class TransactionDaoImpl(TransactionDao):
     async def get_by_user(self, telegram_id: int) -> list[TransactionDto]:
         stmt = select(Transaction).where(Transaction.user_telegram_id == telegram_id)
         result = await self.session.scalars(stmt)
-        db_transactions = list(result.all())
+        db_transactions = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_transactions)}' transactions for user '{telegram_id}'")
         return self._convert_to_dto_list(db_transactions)
@@ -69,7 +69,7 @@ class TransactionDaoImpl(TransactionDao):
             select(Transaction).limit(limit).offset(offset).order_by(Transaction.created_at.desc())
         )
         result = await self.session.scalars(stmt)
-        db_transactions = list(result.all())
+        db_transactions = cast(list, result.all())
 
         logger.debug(
             f"Retrieved '{len(db_transactions)}' transactions "
@@ -80,7 +80,7 @@ class TransactionDaoImpl(TransactionDao):
     async def get_by_status(self, status: TransactionStatus) -> list[TransactionDto]:
         stmt = select(Transaction).where(Transaction.status == status)
         result = await self.session.scalars(stmt)
-        db_transactions = list(result.all())
+        db_transactions = cast(list, result.all())
 
         logger.debug(f"Found '{len(db_transactions)}' transactions with status '{status}'")
         return self._convert_to_dto_list(db_transactions)

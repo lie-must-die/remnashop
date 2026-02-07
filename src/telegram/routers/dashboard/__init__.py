@@ -1,4 +1,4 @@
-from . import access, dialog, remnashop, remnawave, users
+from . import access, broadcast, dialog, remnashop, remnawave, users
 
 __all__ = [
     "dialog",

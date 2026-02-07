@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from adaptix import Retort
 from adaptix.conversion import ConversionRetort
@@ -41,7 +41,7 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
         self.session.add(db_gateway)
         await self.session.flush()
 
-        logger.debug(f"Payment gateway '{gateway.type}' created")
+        logger.debug(f"Created payment gateway '{gateway.type}'")
         return self._convert_to_dto(db_gateway)
 
     async def get_by_type(self, gateway_type: PaymentGatewayType) -> Optional[PaymentGatewayDto]:
@@ -58,12 +58,12 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
     async def get_active_by_currency(self, currency: Currency) -> list[PaymentGatewayDto]:
         stmt = (
             select(PaymentGateway)
-            .where(PaymentGateway.is_active == True)  # noqa: E712
+            .where(PaymentGateway.is_active.is_(True))
             .where(PaymentGateway.currency == currency)
             .order_by(PaymentGateway.order_index.asc())
         )
         result = await self.session.scalars(stmt)
-        db_gateways = list(result.all())
+        db_gateways = cast(list, result.all())
 
         logger.debug(f"Retrieved '{len(db_gateways)}' active gateways for currency '{currency}'")
         return self._convert_to_dto_list(db_gateways)
@@ -71,10 +71,10 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
     async def get_all(self, only_active: bool = False) -> list[PaymentGatewayDto]:
         stmt = select(PaymentGateway).order_by(PaymentGateway.order_index.asc())
         if only_active:
-            stmt = stmt.where(PaymentGateway.is_active == True)  # noqa: E712
+            stmt = stmt.where(PaymentGateway.is_active.is_(True))
 
         result = await self.session.scalars(stmt)
-        db_gateways = list(result.all())
+        db_gateways = cast(list, result.all())
 
         logger.debug(
             f"Retrieved '{len(db_gateways)}' gateways with only_active status '{only_active}'"
@@ -93,7 +93,7 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
         values_to_update = {}
 
         for key, value in settings.changed_data.items():
-            column = getattr(AnyGatewaySettingsDto, key)
+            column = getattr(PaymentGateway, key)
 
             if isinstance(value, dict):
                 dumped = {k: self.retort.dump(v, Any) for k, v in value.items()}
@@ -127,7 +127,9 @@ class PaymentGatewayDaoImpl(PaymentGatewayDao):
 
     async def count_active(self) -> int:
         stmt = (
-            select(func.count()).select_from(PaymentGateway).where(PaymentGateway.is_active == True)  # noqa: E712
+            select(func.count())
+            .select_from(PaymentGateway)
+            .where(PaymentGateway.is_active.is_(True))
         )
         count = await self.session.scalar(stmt) or 0
 

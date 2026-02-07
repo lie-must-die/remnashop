@@ -18,6 +18,7 @@ def setup_routers(router: Router) -> None:
         #
         dashboard.dialog.router,
         dashboard.access.dialog.router,
+        dashboard.broadcast.dialog.router,
         dashboard.remnawave.dialog.router,
         #
         dashboard.remnashop.dialog.router,

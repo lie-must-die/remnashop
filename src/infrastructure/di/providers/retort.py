@@ -1,21 +1,31 @@
 from datetime import datetime
 from typing import Any
 
-from adaptix import ExtraSkip, Retort, as_is_dumper, dumper, loader, name_mapping
+from adaptix import (
+    ExtraSkip,
+    P,
+    Retort,
+    as_is_dumper,
+    dumper,
+    loader,
+    name_mapping,
+)
 from adaptix._internal.provider.loc_stack_filtering import OriginSubclassLSC
 from adaptix.conversion import ConversionRetort, coercer
 from dishka import Provider, Scope, provide
-from pydantic import SecretStr
+from pydantic import SecretStr, TypeAdapter
 
 from src.application.dto import (
     AccessSettingsDto,
+    MessagePayloadDto,
     NotificationsSettingsDto,
     PlanSnapshotDto,
+    PriceDetailsDto,
     ReferralSettingsDto,
     RequirementSettingsDto,
 )
-from src.application.dto.transaction import PriceDetailsDto
-from src.core.enums import ReferralLevel, Role
+from src.core.enums import MediaType, ReferralLevel, Role
+from src.core.types import AnyKeyboard
 from src.infrastructure.redis.key_builder import StorageKey, serialize_storage_key
 
 
@@ -31,6 +41,13 @@ class RetortProvider(Provider):
 
         retort = Retort(
             recipe=[
+                loader(
+                    P[MessagePayloadDto].reply_markup,
+                    lambda x: TypeAdapter(AnyKeyboard).validate_python(x) if x else None,
+                ),
+                dumper(P[MessagePayloadDto].reply_markup, lambda x: x.model_dump() if x else None),
+                dumper(P[MessagePayloadDto].media_type, lambda x: MediaType(x) if x else None),
+                #
                 as_is_dumper(datetime),
                 name_mapping(extra_in=ExtraSkip()),
                 #
@@ -43,7 +60,7 @@ class RetortProvider(Provider):
                 loader(SecretStr, SecretStr),
                 dumper(SecretStr, lambda v: v.get_secret_value()),
                 dumper(Any, secret_dumper),
-            ]
+            ],
         )
 
         return retort
@@ -52,6 +69,7 @@ class RetortProvider(Provider):
     def get_conversion_retort(self, retort: Retort) -> ConversionRetort:
         conversion_retort = ConversionRetort(
             recipe=[
+                coercer(dict, MessagePayloadDto, retort.get_loader(MessagePayloadDto)),
                 coercer(Role, Role, lambda v: Role(v)),
                 #
                 coercer(dict, PlanSnapshotDto, retort.get_loader(PlanSnapshotDto)),
@@ -61,7 +79,6 @@ class RetortProvider(Provider):
                     dict, NotificationsSettingsDto, retort.get_loader(NotificationsSettingsDto)
                 ),
                 coercer(dict, ReferralSettingsDto, retort.get_loader(ReferralSettingsDto)),
-                # coercer(SecretStr, str, lambda v: v.get_secret_value()),
                 coercer(dict, PriceDetailsDto, retort.get_loader(PriceDetailsDto)),
             ]
         )

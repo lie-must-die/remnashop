@@ -1,6 +1,7 @@
 from dishka import Provider, Scope, provide_all
 
 from src.application.use_cases.access import ACCESS_USE_CASES
+from src.application.use_cases.broadcast import BROADCAST_USE_CASES
 from src.application.use_cases.logs import GetLogs
 from src.application.use_cases.menu import GetMenuData
 from src.application.use_cases.plan import PLAN_USE_CASES
@@ -22,6 +23,7 @@ class UseCasesProvider(Provider):
         *PLAN_USE_CASES,
         *REMNAWAVE_USE_CASES,
         *SUBSCRIPTION_USE_CASES,
+        *BROADCAST_USE_CASES,
         #
         GetLogs,
         GetMenuData,

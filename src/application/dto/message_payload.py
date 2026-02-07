@@ -1,8 +1,15 @@
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from src.core.enums import MediaType, MessageEffectId
-from src.core.types import AnyKeyboard, AnyMedia
+from src.core.types import AnyKeyboard
+
+
+@dataclass(frozen=True)
+class MediaDescriptorDto:
+    kind: Literal["file_id", "fs", "bytes"]
+    value: str
+    filename: Optional[str] = None
 
 
 @dataclass(kw_only=True)
@@ -10,7 +17,7 @@ class MessagePayloadDto:
     i18n_key: str
     i18n_kwargs: dict[str, Any] = field(default_factory=dict)
 
-    media: Optional[AnyMedia] = None
+    media: Optional[MediaDescriptorDto] = None
     media_type: Optional[MediaType] = None
 
     reply_markup: Optional[AnyKeyboard] = None

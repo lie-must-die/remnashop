@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID
 
 from remnapy.enums.users import TrafficLimitStrategy
-from sqlalchemy import ARRAY, DateTime, Enum
+from sqlalchemy import ARRAY, DateTime, Enum, Integer
 from sqlalchemy import UUID as PG_UUID
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, registry
@@ -29,6 +29,7 @@ from src.core.enums import (
 
 mapper_registry = registry(
     type_annotation_map={
+        int: Integer,
         dict[str, Any]: JSONB,
         UUID: PG_UUID,
         list[UUID]: ARRAY(PG_UUID),
