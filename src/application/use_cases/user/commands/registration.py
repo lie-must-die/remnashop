@@ -14,6 +14,7 @@ from src.application.use_cases.referral.commands.attachment import AttachReferra
 from src.application.use_cases.referral.queries.code import GetReferralCodeFromEvent
 from src.core.config import AppConfig
 from src.core.enums import Locale, Role
+from src.core.utils.converters import user_name_clean
 
 
 @dataclass
@@ -117,3 +118,66 @@ class GetOrCreateUser(Interactor[GetOrCreateUserDto, Optional[UserDto]]):
             role=data.role,
             language=locale,
         )
+
+
+@dataclass(frozen=True)
+class UpdateUserFromTelegramDto:
+    user: UserDto
+    aiogram_user: AiogramUser
+
+
+class UpdateUserFromTelegram(Interactor[UpdateUserFromTelegramDto, UserDto]):
+    required_permission = None
+
+    def __init__(self, uow: UnitOfWork, user_dao: UserDao, config: AppConfig):
+        self.uow = uow
+        self.user_dao = user_dao
+        self.config = config
+
+    async def _execute(self, actor: UserDto, data: UpdateUserFromTelegramDto) -> UserDto:
+        user = data.user
+        aiogram_user = data.aiogram_user
+        changed = False
+
+        new_username = aiogram_user.username
+        if user.username != new_username:
+            logger.debug(
+                f"User '{user.telegram_id}' username changed from "
+                f"'{user.username}' to '{new_username}'"
+            )
+            user.username = new_username
+            changed = True
+
+        new_name = user_name_clean(aiogram_user.full_name, aiogram_user.id)
+        if user.name != new_name:
+            logger.debug(
+                f"User '{user.telegram_id}' name changed from '{user.name}' to '{new_name}'"
+            )
+            user.name = new_name
+            changed = True
+
+        new_language = aiogram_user.language_code
+        if new_language and user.language != new_language:
+            if new_language in self.config.locales:
+                logger.debug(
+                    f"User '{user.telegram_id}' language changed from "
+                    f"'{user.language}' to '{new_language}'"
+                )
+                user.language = Locale(new_language)
+                changed = True
+            else:
+                logger.warning(
+                    f"User '{user.telegram_id}' language '{new_language}' is not supported, "
+                    f"keeping current '{user.language}'"
+                )
+
+        if not changed:
+            return user
+
+        async with self.uow:
+            updated_user = await self.user_dao.update(user)
+            if updated_user:
+                logger.info(f"User '{user.telegram_id}' profile updated from Telegram data")
+            await self.uow.commit()
+
+        return updated_user or user

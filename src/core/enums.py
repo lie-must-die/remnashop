@@ -178,7 +178,7 @@ class Role(IntEnum):
 
 
 class SystemNotificationType(UpperStrEnum):
-    ERROR = auto()
+    SYSTEM = auto()
     #
     BOT_LIFECYCLE = auto()
     BOT_UPDATE = auto()

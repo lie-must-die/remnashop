@@ -5,7 +5,7 @@ from src.application.common import Interactor
 from .commands.blocking import SetBotBlockedStatus, ToggleUserBlockedStatus, UnblockAllUsers
 from .commands.messaging import SendMessageToUser
 from .commands.profile_edit import ChangeUserPoints, SetUserPersonalDiscount
-from .commands.registration import GetOrCreateUser
+from .commands.registration import GetOrCreateUser, UpdateUserFromTelegram
 from .commands.roles import GetAdmins, RevokeRole, SetUserRole
 from .queries.plans import GetAvailablePlanByCode, GetAvailablePlans, GetAvailableTrial
 from .queries.profile import GetUserDevices, GetUserProfile, GetUserProfileSubscription
@@ -29,4 +29,5 @@ USER_USE_CASES: Final[tuple[type[Interactor], ...]] = (
     SendMessageToUser,
     GetAvailableTrial,
     GetAvailablePlanByCode,
+    UpdateUserFromTelegram,
 )

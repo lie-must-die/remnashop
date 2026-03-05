@@ -5,7 +5,9 @@ from uuid import UUID
 
 from aiogram.utils.formatting import Text
 
+from src.__version__ import __version__
 from src.application.dto import BuildInfoDto, MediaDescriptorDto, MessagePayloadDto
+from src.core.constants import REPOSITORY
 from src.core.enums import (
     AccessMode,
     MediaType,
@@ -21,9 +23,34 @@ from .base import BaseEvent, SystemEvent
 
 
 @dataclass(frozen=True, kw_only=True)
+class RemnashopWelcomeEvent(BaseEvent):
+    notification_type: NotificationType = field(
+        default=SystemNotificationType.SYSTEM,
+        init=False,
+    )
+
+    version: str = __version__
+    repository: str = REPOSITORY
+
+    @property
+    def event_key(self) -> str:
+        return "event-remnashop-welcome"
+
+    def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_remnashop_keyboard  # noqa: PLC0415
+
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self)},
+            reply_markup=get_remnashop_keyboard(),
+            delete_after=None,
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
 class ErrorEvent(BaseEvent, BuildInfoDto):
     notification_type: NotificationType = field(
-        default=SystemNotificationType.ERROR,
+        default=SystemNotificationType.SYSTEM,
         init=False,
     )
 
@@ -62,7 +89,7 @@ class ErrorEvent(BaseEvent, BuildInfoDto):
 @dataclass(frozen=True, kw_only=True)
 class RemnawaveErrorEvent(ErrorEvent):
     notification_type: NotificationType = field(
-        default=SystemNotificationType.ERROR,
+        default=SystemNotificationType.SYSTEM,
         init=False,
     )
 
@@ -74,7 +101,7 @@ class RemnawaveErrorEvent(ErrorEvent):
 @dataclass(frozen=True, kw_only=True)
 class WebhookErrorEvent(BaseEvent):
     notification_type: NotificationType = field(
-        default=SystemNotificationType.ERROR,
+        default=SystemNotificationType.SYSTEM,
         init=False,
     )
 

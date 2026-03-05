@@ -37,14 +37,13 @@ async def on_user_search(
     search_data = SearchUsersDto(
         query=message.text,
         forward_from_id=message.forward_from.id if message.forward_from else None,
+        forward_sender_name=message.forward_sender_name if message.forward_sender_name else None,
         is_forwarded_from_bot=message.forward_from.is_bot if message.forward_from else False,
     )
 
     found_users = await search_users(user, search_data)
-    search_query = message.text.strip() if message.text else "forwarded_msg"
 
     if not found_users:
-        logger.info(f"{user.log} Search for '{search_query}' yielded no results")
         await notifier.notify_user(user, i18n_key="ntf-user.not-found")
 
     elif len(found_users) == 1:
@@ -53,7 +52,6 @@ async def on_user_search(
         await start_user_window(manager=dialog_manager, target_telegram_id=target_user.telegram_id)
 
     else:
-        logger.info(f"{user.log} Search for '{search_query}' found '{len(found_users)}' results")
         await dialog_manager.start(
             state=DashboardUsers.SEARCH_RESULTS,
             data={"found_users": retort.dump(found_users, list[UserDto])},

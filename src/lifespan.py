@@ -16,6 +16,7 @@ from src.application.events import (
     RemnawaveErrorEvent,
     WebhookErrorEvent,
 )
+from src.application.events.system import RemnashopWelcomeEvent
 from src.application.services import CommandService, WebhookService
 from src.application.use_cases.gateways.commands.payment import CreateDefaultPaymentGateway
 from src.core.config import AppConfig
@@ -87,6 +88,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         <yellow>Registration allowed: '{settings.access.registration_allowed}'</>
         """  # noqa: W605
     )
+
+    await event_bus.publish(RemnashopWelcomeEvent())
 
     bot_startup_event = BotStartupEvent(
         **config.build.data,

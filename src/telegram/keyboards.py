@@ -186,7 +186,7 @@ def get_remnashop_keyboard() -> InlineKeyboardMarkup:
     builder.row(
         InlineKeyboardButton(
             text="btn-remnashop-info.donate",
-            url="https://yookassa.ru/my/i/Z8AkHJ_F9sO_/l",
+            url="https://boosty.to/snoups",
         )
     )
 

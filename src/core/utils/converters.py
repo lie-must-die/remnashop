@@ -1,4 +1,6 @@
+import html
 import re
+import unicodedata
 from calendar import monthrange
 from datetime import datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
@@ -7,12 +9,49 @@ from typing import Final, Optional
 from src.core.enums import PlanType
 from src.core.utils.time import datetime_now
 
-GB_FACTOR: Final[Decimal] = Decimal(1024**3)
+_GB_FACTOR: Final[Decimal] = Decimal(1024**3)
+_HTML_RE = re.compile(r"<[^>]*>")
+_URL_RE = re.compile(r"(?i)\b(?:https?://|www\.|tg://|t\.me/|telegram\.me/|joinchat/)\S+")
 
 
 def _round_decimal(value: Decimal) -> int:
     result = value.quantize(Decimal("1"), rounding=ROUND_HALF_UP)
     return max(0, int(result))
+
+
+def user_name_clean(name: Optional[str], telegram_id: int) -> str:
+    if not name:
+        return f"{telegram_id}"
+
+    text = html.unescape(name)
+    text = unicodedata.normalize("NFKC", text)
+
+    text = _HTML_RE.sub("", text)
+    text = _URL_RE.sub("", text)
+
+    allowed_prefixes = {"L", "N"}
+    allowed_symbols = {"$", "_", "-", "."}
+
+    chars: list[str] = []
+
+    for char in text:
+        cat = unicodedata.category(char)
+
+        if cat == "Mn":
+            continue
+
+        if cat[0] in allowed_prefixes or char in allowed_symbols or cat == "Zs":
+            chars.append(char)
+
+    cleaned = " ".join("".join(chars).split())
+
+    if not cleaned:
+        return f"{telegram_id}"
+
+    if len(cleaned) > 32:
+        cleaned = f"{cleaned[:31]}"
+
+    return cleaned
 
 
 def to_snake_case(name: str) -> str:
@@ -30,14 +69,14 @@ def gb_to_bytes(value: Optional[int]) -> int:
     if not value:
         return 0
 
-    return _round_decimal(Decimal(value) * GB_FACTOR)
+    return _round_decimal(Decimal(value) * _GB_FACTOR)
 
 
 def bytes_to_gb(value: Optional[int]) -> int:
     if not value:
         return 0
 
-    return _round_decimal(Decimal(value) / GB_FACTOR)
+    return _round_decimal(Decimal(value) / _GB_FACTOR)
 
 
 def percent(part: int, whole: int) -> str:

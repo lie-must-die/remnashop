@@ -14,6 +14,7 @@ from src.core.constants import REMNASHOP_PREFIX
 class SearchUsersDto:
     query: Optional[str] = None
     forward_from_id: Optional[int] = None
+    forward_sender_name: Optional[str] = None
     is_forwarded_from_bot: bool = False
 
 
@@ -23,20 +24,31 @@ class SearchUsers(Interactor[SearchUsersDto, list[UserDto]]):
     def __init__(self, user_dao: UserDao):
         self.user_dao = user_dao
 
-    async def _execute(self, actor: UserDto, data: SearchUsersDto) -> list[UserDto]:
+    async def _execute(self, actor: UserDto, data: SearchUsersDto) -> list[UserDto]:  # noqa: C901
         found_users = []
 
-        if data.forward_from_id and not data.is_forwarded_from_bot:
-            telegram_id = data.forward_from_id
-            user = await self.user_dao.get_by_telegram_id(telegram_id)
-            if user:
-                found_users.append(user)
-                logger.info(f"Search by forwarded message, found user '{telegram_id}'")
-            else:
-                logger.warning(f"Search by forwarded message, user '{telegram_id}' not found")
+        if (data.forward_from_id or data.forward_sender_name) and not data.is_forwarded_from_bot:
+            if data.forward_from_id:
+                user = await self.user_dao.get_by_telegram_id(data.forward_from_id)
+                if user:
+                    found_users.append(user)
+                    logger.info(f"Search by forwarded message, found user '{data.forward_from_id}'")
+                    return found_users
 
-        elif data.query:
-            query = data.query.strip()
+                logger.warning(
+                    f"Search by forwarded message, user '{data.forward_from_id}' not found"
+                )
+
+            if data.forward_sender_name:
+                sender_name = data.forward_sender_name.strip()
+                users = await self.user_dao.get_by_partial_name(sender_name)
+                found_users.extend(users)
+                logger.info(f"Search by forwarded name '{sender_name}', found '{len(users)}' users")
+
+            return found_users
+
+        if data.query:
+            query = data.query.strip().removeprefix("@")
 
             if query.isdigit():
                 telegram_id = int(query)

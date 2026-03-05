@@ -41,7 +41,7 @@ async def system_types_getter(
             "enabled": value,
         }
         for field, value in settings.notifications.system
-        if field != SystemNotificationType.ERROR
+        if field != SystemNotificationType.SYSTEM
     ]
 
     return {"types": types}
