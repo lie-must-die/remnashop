@@ -15,6 +15,8 @@ class RemnawaveConfig(BaseConfig, env_prefix="REMNAWAVE_"):
     port: int = 3000
     token: SecretStr
     caddy_token: SecretStr = SecretStr("")
+    cf_client_id: SecretStr = SecretStr("")
+    cf_client_secret: SecretStr = SecretStr("")
     webhook_secret: SecretStr
     cookie: SecretStr = SecretStr("")
 
