@@ -151,3 +151,13 @@ ntf-sync =
 
 ntf-menu-editor =
     .button-saved = ✅ <i>Кнопка успешно сохранена.</i>
+
+ntf-devices =
+    .deleted = ✅ Устройство удалено
+    .all-deleted = ✅ Все устройства удалены
+    .reissued = ✅ Подписка успешно перевыпущена
+
+ntf-backup =
+    .assets-started = ⏳ Создаю бэкап assets...
+    .db-started = ⏳ Создаю бэкап базы данных...
+    .error = ❌ Ошибка при создании бэкапа

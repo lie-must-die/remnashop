@@ -20,7 +20,7 @@ from src.telegram.utils import require_permission
 from src.telegram.widgets import Banner, I18nFormat, IgnoreUpdate
 
 from .getters import admins_getter, remnashop_getter
-from .handlers import on_logs_request, on_role_revoke, on_user_select
+from .handlers import on_backup_assets, on_backup_database, on_logs_request, on_role_revoke, on_user_select
 
 remnashop = Window(
     Banner(BannerName.DASHBOARD),
@@ -86,6 +86,14 @@ remnashop = Window(
         ),
     ),
     Row(
+        SwitchTo(
+            text=I18nFormat("btn-remnashop.backup"),
+            id="backup",
+            state=DashboardRemnashop.BACKUP,
+            when=require_permission(Permission.VIEW_BACKUP),
+        ),
+    ),
+    Row(
         Start(
             text=I18nFormat("btn-back.general"),
             id="back",
@@ -133,7 +141,36 @@ admins = Window(
     getter=admins_getter,
 )
 
+backup = Window(
+    Banner(BannerName.DASHBOARD),
+    I18nFormat("msg-remnashop-backup"),
+    Row(
+        Button(
+            text=I18nFormat("btn-remnashop.backup-assets"),
+            id="backup_assets",
+            on_click=on_backup_assets,
+        ),
+    ),
+    Row(
+        Button(
+            text=I18nFormat("btn-remnashop.backup-db"),
+            id="backup_db",
+            on_click=on_backup_database,
+        ),
+    ),
+    Row(
+        SwitchTo(
+            text=I18nFormat("btn-back.general"),
+            id="back",
+            state=DashboardRemnashop.MAIN,
+        ),
+    ),
+    IgnoreUpdate(),
+    state=DashboardRemnashop.BACKUP,
+)
+
 router = Dialog(
     remnashop,
     admins,
+    backup,
 )
