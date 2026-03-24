@@ -1,5 +1,5 @@
 from aiogram import F, Router
-from aiogram.filters import CommandStart
+from aiogram.filters import CommandObject, CommandStart
 from aiogram.types import CallbackQuery, Message
 from aiogram_dialog import DialogManager, ShowMode, StartMode
 from aiogram_dialog.widgets.kbd import Button
@@ -43,8 +43,22 @@ async def on_start_dialog(user: UserDto, dialog_manager: DialogManager) -> None:
 
 
 @router.message(CommandStart(ignore_case=True))
-async def on_start_command(message: Message, user: UserDto, dialog_manager: DialogManager) -> None:
-    await on_start_dialog(user, dialog_manager)
+async def on_start_command(
+    message: Message,
+    command: CommandObject,
+    user: UserDto,
+    dialog_manager: DialogManager,
+) -> None:
+    if command.args == "invite":
+        logger.info(f"{user.log} Started dialog via deep link (invite)")
+        await dialog_manager.start(
+            state=MainMenu.INVITE,
+            mode=StartMode.RESET_STACK,
+            show_mode=ShowMode.DELETE_AND_SEND,
+        )
+    else:
+        await on_start_dialog(user, dialog_manager)
+
 
 
 @router.callback_query(F.data == CALLBACK_RULES_ACCEPT)
