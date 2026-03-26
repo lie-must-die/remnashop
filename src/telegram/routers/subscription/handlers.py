@@ -65,7 +65,9 @@ async def _create_payment_and_get_data(
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     duration = plan.get_duration(duration_days)
     payment_gateway = await payment_gateway_dao.get_by_type(gateway_type)
-    purchase_type: PurchaseType = dialog_manager.dialog_data["purchase_type"]
+    purchase_type = dialog_manager.dialog_data.get("purchase_type")
+    if not purchase_type:
+        return None
 
     if not duration or not payment_gateway:
         logger.error(f"{user.log} Failed to find duration or gateway for payment creation")
@@ -367,6 +369,11 @@ async def on_payment_method_select(
 ) -> None:
     user: UserDto = dialog_manager.middleware_data[USER_KEY]
     logger.info(f"{user.log} Selected payment method '{selected_payment_method}'")
+
+    if "purchase_type" not in dialog_manager.dialog_data:
+        logger.warning(f"{user.log} purchase_type missing, resetting dialog")
+        await dialog_manager.done()
+        return
 
     selected_duration = dialog_manager.dialog_data[CURRENT_DURATION_KEY]
     dialog_manager.dialog_data[CURRENT_METHOD_KEY] = selected_payment_method
