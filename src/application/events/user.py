@@ -3,7 +3,7 @@ from typing import Any
 
 from remnapy.enums.users import TrafficLimitStrategy
 
-from src.application.dto.message_payload import MessagePayloadDto
+from src.application.dto import MessagePayloadDto
 from src.core.enums import MessageEffectId, ReferralRewardType, UserNotificationType
 from src.core.types import NotificationType
 
@@ -60,6 +60,34 @@ class SubscriptionExpiredEvent(UserEvent):
         return MessagePayloadDto(
             i18n_key=self.event_key,
             i18n_kwargs={**asdict(self)},
+            reply_markup=keyboard,
+            disable_default_markup=False,
+            delete_after=None,
+        )
+
+
+@dataclass(frozen=True, kw_only=True)
+class SubscriptionExpiredAgoEvent(UserEvent):
+    notification_type: NotificationType = field(
+        default=UserNotificationType.EXPIRED_1_DAY_AGO,
+        init=True,
+    )
+
+    is_trial: bool
+    day: int
+
+    @property
+    def event_key(self) -> str:
+        return "event-subscription.expired-ago"
+
+    def as_payload(self) -> "MessagePayloadDto":
+        from src.telegram.keyboards import get_buy_keyboard, get_renew_keyboard  # noqa: PLC0415
+
+        keyboard = get_buy_keyboard() if self.is_trial else get_renew_keyboard()
+
+        return MessagePayloadDto(
+            i18n_key=self.event_key,
+            i18n_kwargs={**asdict(self), "value": self.day},
             reply_markup=keyboard,
             disable_default_markup=False,
             delete_after=None,
