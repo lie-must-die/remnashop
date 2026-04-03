@@ -45,7 +45,7 @@ class GetAdmins(Interactor[None, list[GetAdminsResultDto]]):
         return (
             target.telegram_id != actor.telegram_id
             and target.role != Role.OWNER
-            and target.role > actor.role
+            and actor.role > target.role
         )
 
 
