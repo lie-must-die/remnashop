@@ -310,6 +310,7 @@ async def on_duration_select(
     if not raw_plan:
         logger.error("PlanDto not found in dialog data")
         await dialog_manager.start(state=Subscription.MAIN)
+        return
 
     plan = retort.load(raw_plan, PlanDto)
     settings = await settings_dao.get()
@@ -397,6 +398,7 @@ async def on_payment_method_select(
     if not raw_plan:
         logger.error("PlanDto not found in dialog data")
         await dialog_manager.start(state=Subscription.MAIN)
+        return
 
     plan = retort.load(raw_plan, PlanDto)
 
