@@ -49,6 +49,7 @@ async def menu_getter(
             "show_purchase_discount": show_purchase_discount,
             # ui / config
             "is_mini_app": config.bot.is_mini_app,
+            "is_mini_app_reserve": config.bot.is_mini_app_reserve,
             "support_url": support_url,
             # referral
             "referral_enabled": menu_data.is_referral_enabled,
@@ -66,6 +67,7 @@ async def menu_getter(
             "expire_time": None,
             "reset_time": None,
             "connection_url": None,
+            "subscription_url": None,
             "row_1_buttons": [b for b in menu_data.custom_buttons if b.index in (1, 2)],
             "row_2_buttons": [b for b in menu_data.custom_buttons if b.index in (3, 4)],
             "row_3_buttons": [b for b in menu_data.custom_buttons if b.index in (5, 6)],
@@ -103,6 +105,7 @@ async def menu_getter(
                 "connection_url": config.bot.mini_app_url
                 if isinstance(config.bot.mini_app_url, str)
                 else subscription.url,
+                "subscription_url": subscription.url,
             }
         )
         logger.debug(f"Menu data for user {user.telegram_id}: {data}")
