@@ -247,6 +247,7 @@ class TransactionDaoImpl(TransactionDao):
                 daily_income=Decimal(row["daily_income"] or 0),
                 weekly_income=Decimal(row["weekly_income"] or 0),
                 monthly_income=Decimal(row["monthly_income"] or 0),
+                last_month_income=Decimal(row["last_month_income"] or 0),
                 paid_count=int(row["paid_count"] or 0),
                 total_discounts=Decimal(row["total_discounts"] or 0),
                 total_transactions=int(row["total_transactions"] or 0),
