@@ -175,6 +175,8 @@ class TransactionDaoImpl(TransactionDao):
         today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
         week_ago = now - timedelta(days=7)
         month_ago = now - timedelta(days=30)
+        last_month_end = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month_start = (last_month_end - timedelta(days=1)).replace(day=1)
 
         final_amount = Transaction.pricing["final_amount"].as_float()
         original_amount = Transaction.pricing["original_amount"].as_float()
@@ -214,6 +216,20 @@ class TransactionDaoImpl(TransactionDao):
                     else_=0.0,
                 )
             ).label("monthly_income"),
+            func.sum(
+                case(
+                    (
+                        and_(
+                            is_completed,
+                            Transaction.created_at >= last_month_start,
+                            Transaction.created_at < last_month_end,
+                        ),
+                        final_amount,
+                    ),
+                    else_=0.0,
+                )
+            ).label("last_month_income"),
+            func.sum(case((and_(is_completed, ~is_free), 1), else_=0)).label("paid_count"),
             func.sum(case((and_(is_completed, ~is_free), 1), else_=0)).label("paid_count"),
             func.sum(case((is_completed, original_amount - final_amount), else_=0.0)).label(
                 "total_discounts"
